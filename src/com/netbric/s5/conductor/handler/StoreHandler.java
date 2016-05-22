@@ -1,0 +1,295 @@
+package com.netbric.s5.conductor.handler;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang3.StringUtils;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+
+import com.netbric.s5.conductor.InvalidParamException;
+import com.netbric.s5.conductor.RestfulReply;
+import com.netbric.s5.conductor.RetCode;
+import com.netbric.s5.conductor.SshExec;
+import com.netbric.s5.conductor.Utils;
+import com.netbric.s5.orm.S5Database;
+import com.netbric.s5.orm.StoreNode;
+import com.netbric.s5.orm.Tray;
+
+/**
+ * handle all request related with store node, include - add - delete - query
+ * 
+ * @author liulele
+ *
+ */
+public class StoreHandler
+{
+
+	/**
+	 * backend handler of CLI s5_add_s5store_node.py
+	 * 
+	 * @param request
+	 * @param response
+	 * @return
+	 */
+	public RestfulReply add_storenode(HttpServletRequest request, HttpServletResponse response)
+	{
+		StoreNode n = new StoreNode();
+		String op = request.getParameter("op");
+		try
+		{
+			n.name = Utils.getParamAsString(request, "name");
+			StoreNode s = S5Database.getInstance().table("t_s5store").where("name=?", n.name).first(StoreNode.class);
+			if (s != null)
+				return new RestfulReply(op, RetCode.INVALID_ARG, "store node already exists:" + n.name);
+
+			n.mngtIp = Utils.getParamAsString(request, "mngt_ip");
+			s = S5Database.getInstance().table("t_s5store").where("mngt_ip=?", n.mngtIp).first(StoreNode.class);
+			if (s != null)
+				return new RestfulReply(op, RetCode.INVALID_ARG, "store node ip already exists:" + n.mngtIp);
+
+			n.model = " ";
+			n.sn = n.name + "-0000AB00";
+			n.status = StoreNode.STATUS_USABLE;
+
+		}
+		catch (InvalidParamException e)
+		{
+			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
+		}
+
+		S5Database.getInstance().insert(n);
+
+		Tray t = new Tray();
+		for (int i = 0; i < 20; ++i)
+		{
+
+			t.name = "Tray-" + i;
+			t.status = 0;
+			t.model = "NBT1503";
+			t.bit = 0;
+			t.firmware = 0;
+			t.raw_capacity = 8L << 40;
+			t.set0_name = "SET-" + i + "-0";
+			t.set0_status = 0;
+			t.set0_model = "NBS1503";
+			t.set0_bit = 0;
+			t.set1_name = "SET-" + i + "-1";
+			t.set1_status = 0;
+			t.set1_model = "NBS1503";
+			t.set1_bit = 0;
+			t.store_idx = n.idx;
+			S5Database.getInstance().insert(t);
+		}
+
+		return new RestfulReply(op);
+	}
+
+	public RestfulReply delete_storenode(HttpServletRequest request, HttpServletResponse response)
+	{
+		String op = request.getParameter("op");
+		String name = null;
+		StoreNode s = null;
+		try
+		{
+			name = Utils.getParamAsString(request, "name");
+			s = S5Database.getInstance().table("t_s5store").where("name=?", name).first(StoreNode.class);
+			if (s == null)
+				return new RestfulReply(op, RetCode.INVALID_ARG, "store node not exists:" + name);
+		}
+		catch (InvalidParamException e)
+		{
+			e.printStackTrace();
+		}
+		Integer count = S5Database.getInstance()
+				.sql("select count(*) from t_replica as r,t_s5store as t where r.store_idx=t.idx and t.name=?", name)
+				.first(Integer.class);
+
+		if (count > 0)
+		{
+			return new RestfulReply(op, RetCode.INVALID_STATE,
+					"Deleted s5store error, as there are replicas under the s5store!");
+		}
+		else
+		{
+			S5Database.getInstance().table("t_s5store").where("name=?", name).delete();
+
+			S5Database.getInstance().sql("delete from t_tray where store_idx=?", s.idx).execute();
+
+			return new RestfulReply(op);
+		}
+	}
+
+	public RestfulReply list_storenode(HttpServletRequest request, HttpServletResponse response)
+	{
+		List<StoreNode> nodes = S5Database.getInstance().results(StoreNode.class);
+		JSONArray json_nodes = new JSONArray();
+		for (StoreNode n : nodes)
+		{
+			JSONObject o = new JSONObject();
+			o.put("name", n.name);
+			o.put("ip", n.mngtIp);
+			o.put("sn", n.sn);
+			o.put("model", n.model);
+			o.put("status", n.status);
+			json_nodes.add(o);
+		}
+		RestfulReply reply = new RestfulReply(request.getParameter("op"));
+		reply.put("node_set", json_nodes);
+		reply.put("count", nodes.size());
+		return reply;
+	}
+
+	public RestfulReply sanity_check(HttpServletRequest request, HttpServletResponse response)
+	{
+		String op = request.getParameter("op");
+		String hostname = request.getParameter("hostname");
+		if (StringUtils.isEmpty(hostname))
+			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: hostname");
+		try
+		{
+			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
+			if (node == null)
+				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
+			SshExec executer = new SshExec(node.mngtIp);
+			RestfulReply r = new RestfulReply(op);
+			boolean allok = true;
+			if (0 != executer.execute("echo Hello"))
+			{
+				r.put("ssh", "FAILED:" + executer.getStdout());
+				allok = false;
+			}
+			else
+				r.put("ssh", "OK");
+			if (0 != executer.execute("pidof lt-raio_server"))
+			{
+				r.put("raio_server", "FAILED: raio_server not running");
+				allok = false;
+			}
+			else
+				r.put("raio_server", "OK");
+
+			if (0 != executer.execute("pidof s5afs"))
+			{
+				r.put("s5afs", "FAILED: s5afs not running");
+				allok = false;
+			}
+			else
+				r.put("s5afs", "OK");
+
+			if (0 != executer.execute("pidof bdd"))
+			{
+				r.put("bdd", "FAILED: bdd not running");
+				allok = false;
+			}
+			else
+				r.put("bdd", "OK");
+
+			if (0 != executer.execute("which nbdxadm"))
+			{
+				r.put("nbdxadm", "FAILED: nbdxadm can not found");
+				allok = false;
+			}
+			else
+				r.put("nbdxadm", "OK");
+			if (0 != executer.execute("lsmod | grep nbdx"))
+			{
+				r.put("nbdx.ko", "FAILED: nbdx.ko not installed");
+				allok = false;
+			}
+			else
+				r.put("nbdx.ko", "OK");
+
+			if (0 != executer.execute("lsmod | grep s5bd"))
+			{
+				r.put("s5bd.ko", "FAILED: s5bd.ko not installed");
+				allok = false;
+			}
+			else
+				r.put("s5bd.ko", "OK");
+
+			if (0 != executer.execute("which s5bd"))
+			{
+				r.put("s5bd", "FAILED: s5bd command not found");
+				allok = false;
+			}
+			else
+				r.put("s5bd", "OK");
+			if (!allok)
+				r.setRetCode(RetCode.REMOTE_ERROR);
+			return r;
+		}
+		catch (Exception ex)
+		{
+			return new RestfulReply(op, RetCode.DB_ERROR, ex.getMessage());
+		}
+	}
+
+	public RestfulReply list_nodeport(HttpServletRequest request, HttpServletResponse response)
+	{
+		JSONArray json_nodes = new JSONArray();
+		String op = request.getParameter("op");
+		String hostname = request.getParameter("node_name");
+		if (StringUtils.isEmpty(hostname))
+			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: node_name");
+		try
+		{
+			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
+			if (node == null)
+				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
+			SshExec executer = new SshExec(node.mngtIp);
+			RestfulReply r = new RestfulReply(op);
+			boolean allok = true;
+			String[] ethArray = null;
+			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eth'|awk '{print $2}'`"))
+			{
+				r.put("ssh", "FAILED:" + executer.getStdout());
+				allok = false;
+			}
+			else
+			{
+				String result1 = executer.getStdout();
+				result1 = result1.replace("\n", "");
+				ethArray = result1.split(" ");
+			}
+			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eth'|awk '{print $4}'|awk -F/ '{print $1}'`"))
+			{
+				r.put("ssh", "FAILED:" + executer.getStdout());
+				allok = false;
+			}
+			else
+			{
+				String result = executer.getStdout();
+				result = result.replace("\n", "");
+				String[] ipArray = result.split(" ");
+				for (int i = 0; i < ipArray.length; i++)
+				{
+					String ip = ipArray[i];
+					HashMap<String, String> map = new HashMap<String, String>();
+					String portName = ethArray[i];
+					if (!portName.contains("eth"))
+					{
+						continue;
+					}
+					map.put("ipv4", ip);
+					map.put("port_name", ethArray[i]);
+					json_nodes.add(map);
+				}
+				r.put("port_set", json_nodes);
+				r.put("count", json_nodes.size());
+			}
+			if (!allok)
+				r.setRetCode(RetCode.REMOTE_ERROR);
+			return r;
+		}
+		catch (Exception ex)
+		{
+			return new RestfulReply(op, RetCode.DB_ERROR, ex.getMessage());
+		}
+
+	}
+}
