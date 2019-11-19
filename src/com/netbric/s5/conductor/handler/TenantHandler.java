@@ -6,9 +6,6 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-
 import com.netbric.s5.conductor.InvalidParamException;
 import com.netbric.s5.conductor.RestfulReply;
 import com.netbric.s5.conductor.RetCode;
@@ -133,23 +130,21 @@ public class TenantHandler
 		return new RestfulReply(op);
 	}
 
+	public static class ListTenantReply extends RestfulReply
+	{
+		public ListTenantReply(String op)
+		{
+			super(op);
+		}
+		public List<Tenant> tenants;
+	}
 	public RestfulReply listTenant(HttpServletRequest request, HttpServletResponse response)
 	{
 		List<Tenant> tenants = S5Database.getInstance().results(Tenant.class);
-		JSONArray json_nodes = new JSONArray();
-		for (Tenant n : tenants)
-		{
-			JSONObject o = new JSONObject();
-			o.put("name", n.name);
-			o.put("size_MB", n.size / 1024 / 1024);
-			o.put("iops_K", n.iops / 1024);
-			o.put("bw_MBps", n.bw / 1024 / 1024);
-			json_nodes.add(o);
-		}
-		RestfulReply reply = new RestfulReply(request.getParameter("op"));
-		reply.put("tenant_set", json_nodes);
-		reply.put("count", tenants.size());
-		return reply;
+		ListTenantReply r = new ListTenantReply("list_tenant");
+		r.tenants = tenants;
+
+		return r;
 	}
 
 }

@@ -60,7 +60,6 @@ public class S5Database extends Database
 			else
 				config.setJdbcUrl("jdbc:sqlite:/etc/s5/s5_iscsi.db");
 
-			config.setInitializationFailFast(true);
 			return new HikariDataSource(config);
 
 		}

@@ -8,8 +8,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang3.StringUtils;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import com.netbric.s5.conductor.InvalidParamException;
 import com.netbric.s5.conductor.MountTarget;
@@ -26,6 +24,14 @@ import com.netbric.s5.orm.Volume;
 
 public class VolumeHandler
 {
+	public static class ExposeVolumeReply extends RestfulReply
+	{
+		public ExposeVolumeReply(String op, MountTarget[] tgts){
+			super(op);
+			targets = tgts;
+		}
+		MountTarget[] targets;
+	}
 	public RestfulReply expose_volume(HttpServletRequest request, HttpServletResponse response)
 	{
 		String op = request.getParameter("op");
@@ -65,16 +71,8 @@ public class VolumeHandler
 		try
 		{
 			MountTarget[] tgts = NbdxServer.exposeVolume(vol, reps);
-			JSONArray json_nodes = new JSONArray();
-			for (MountTarget t : tgts)
-			{
-				JSONObject o = new JSONObject();
-				o.put("host_port_ip", t.ip);
-				o.put("dev_name", t.devName);
-				json_nodes.add(o);
-			}
-			RestfulReply r = new RestfulReply(op);
-			r.put("nbdx_tgts", json_nodes);
+
+			RestfulReply r = new ExposeVolumeReply(op, tgts);
 			return r;
 		}
 		catch (OperateException | IOException e)
@@ -119,16 +117,8 @@ public class VolumeHandler
 		try
 		{
 			MountTarget[] tgts = NbdxServer.unexposeVolume(vol, reps);
-			JSONArray json_nodes = new JSONArray();
-			for (MountTarget t : tgts)
-			{
-				JSONObject o = new JSONObject();
-				o.put("host_port_ip", t.ip);
-				o.put("dev_name", t.devName);
-				json_nodes.add(o);
-			}
-			RestfulReply r = new RestfulReply(op);
-			r.put("nbdx_tgts", json_nodes);
+
+			RestfulReply r = new ExposeVolumeReply(op, tgts);
 			return r;
 		}
 		catch (OperateException | IOException e)
@@ -227,7 +217,7 @@ public class VolumeHandler
 		RestfulReply ret = select_s5store(op, replica_count, volume_size, store_name, tray_ids, store_idx);
 		try
 		{
-			int r = (int) ret.get("ret_code");
+			int r = (int) ret.retCode;
 			if (r != 0)
 			{
 				return ret;
@@ -326,7 +316,7 @@ public class VolumeHandler
 		RestfulReply ret = select_suitable_store_tray(op, replica_count, volume_size, store_names, store_ids, tray_ids);
 		try
 		{
-			int r = (int) ret.get("ret_code");
+			int r = (int) ret.retCode;
 			if (r != 0)
 				return ret;
 		}
@@ -506,6 +496,15 @@ public class VolumeHandler
 			return new RestfulReply(op);
 	}
 
+	static class ListVolumeReply  extends RestfulReply
+    {
+        public ListVolumeReply(String op, List<Volume> vols)
+        {
+            super(op);
+            volumes = vols;
+        }
+        public List<Volume> volumes;
+    }
 	public RestfulReply list_volume(HttpServletRequest request, HttpServletResponse response)
 	{
 
@@ -527,34 +526,14 @@ public class VolumeHandler
 		}
 		int tenant_idx = S5Database.getInstance().sql("select idx from t_tenant where name=?", name)
 				.first(Integer.class);
-		List<HashMap> volumes = S5Database.getInstance()
-				.sql("select name, size, iops, bw from t_volume where tenant_idx=?", tenant_idx).results(HashMap.class);
+		List<Volume> volumes = S5Database.getInstance()
+				.sql("select name, size, iops, bw from t_volume where tenant_idx=?", tenant_idx).results(Volume.class);
 
 		if (limit >= volumes.size())
 			limit = volumes.size();
 
-		JSONArray json_nodes = new JSONArray();
-		for (int i = 0; i < limit; i++)
-		{
-			HashMap n = volumes.get(i);
-			JSONObject o = new JSONObject();
-			o.put("volume_name", n.get("name"));
-			o.put("tenant_name", name);
-			try
-			{
-				o.put("size_MB", (long) n.get("size") / 1024 / 1024);
-			}
-			catch (Exception e)
-			{
-				o.put("size_MB", (int) n.get("size") / 1024 / 1024);
-			}
-			o.put("iops_k", (int) n.get("iops") / 1024);
-			o.put("bw_MB", (int) n.get("bw") / 1024 / 1024);
-			json_nodes.add(o);
-		}
-		RestfulReply reply = new RestfulReply(request.getParameter("op"));
-		reply.put("node_set", json_nodes);
-		reply.put("count", volumes.size());
+
+		RestfulReply reply = new ListVolumeReply(request.getParameter("op"), volumes);
 		return reply;
 
 	}

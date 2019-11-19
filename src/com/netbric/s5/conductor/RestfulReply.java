@@ -1,33 +1,38 @@
 package com.netbric.s5.conductor;
 
-import org.json.simple.JSONObject;
 
-public class RestfulReply extends JSONObject
+public class RestfulReply
 {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+    public String reason;
+    public String op;
+	public int retCode;
 
 	@SuppressWarnings("unchecked")
 	public RestfulReply(String op)
 	{
-		this.put("op", op + "_reply");
-		this.put("ret_code", 0);
+	    this.op= op+"_reply";
 	}
 
 	@SuppressWarnings("unchecked")
 	public RestfulReply(String op, int retCode, String reason)
 	{
-		this.put("op", op + "_reply");
-		this.put("ret_code", retCode);
-		this.put("reason", reason);
+        this.op= op+"_reply";
+        this.retCode = retCode;
+        this.reason = reason;
 	}
 
 	public void setRetCode(int retCode)
 	{
-		this.put("ret_code", retCode);
+		this.retCode = retCode;
 	}
 
+    public void setFail(int code, String reason) {
+	    this.retCode = code;
+	    this.reason = reason;
+    }
 }

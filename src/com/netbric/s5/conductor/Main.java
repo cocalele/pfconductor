@@ -9,10 +9,17 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 
 import com.netbric.s5.cluster.ClusterManager;
 
@@ -52,7 +59,6 @@ public class Main
 		}
 
 		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE");
-		Server server = new Server(2000);
 
 		// zookeeper config file
 		String cfgPath = cmd.getOptionValue("c");
@@ -100,34 +106,32 @@ public class Main
 		ClusterManager.waitToBeMaster(managmentIp);
 		MetaVolume.mount();
 
-		// Add a single handler on context "/hello"
-		ContextHandler context = new ContextHandler();
-		context.setContextPath("/s5c");
-		context.setHandler(new S5RestfulHandler());
 
-		// Can be accessed using http://localhost:8080/hello
+        // Start the server
+        org.eclipse.jetty.server.Server srv = new org.eclipse.jetty.server.Server(49180);
+        // Add a single handler on context "/hello"
+        ContextHandler context = new ContextHandler();
+        context.setContextPath("/s5c");
+        context.setHandler(new S5RestfulHandler());
+        srv.setHandler(context);
+        srv.start();
 
-		server.setHandler(context);
+        // Can be accessed using http://localhost:8080/hello
 
-		// Start the server
-		try
-		{
-			server.start();
-		}
-		catch (Exception e)
-		{
 
-			e.printStackTrace();
-			logger.error("Failt to start jetty server:", e);
-		}
-		try
-		{
-			server.join();
-		}
-		catch (InterruptedException e)
-		{
-			logger.info("Conductor stop for interrupted by {}", e.getMessage());
-		}
+//        try
+//        {
+//            HttpServer server = HttpServer.create(new InetSocketAddress(49180), 0);
+//            server.createContext("/s5c", new S5RestfulHandler() );
+//            server.setExecutor(null); // creates a default executor
+//            server.start();
+//        }
+//		catch (Exception e)
+//		{
+//
+//			e.printStackTrace();
+//			logger.error("Failt to start jetty server:", e);
+//		}
 	}
 
 }

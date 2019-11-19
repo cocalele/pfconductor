@@ -1,15 +1,13 @@
 package com.netbric.s5.conductor.handler;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.netbric.s5.orm.Port;
 import org.apache.commons.lang3.StringUtils;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 import com.netbric.s5.conductor.InvalidParamException;
 import com.netbric.s5.conductor.RestfulReply;
@@ -124,26 +122,32 @@ public class StoreHandler
 		}
 	}
 
+	static class ListStoreReply extends RestfulReply
+	{
+		public ListStoreReply(String op, List<StoreNode> stores)
+		{
+			super(op);
+			this.storeNodes = stores;
+		}
+		List<StoreNode> storeNodes;
+	}
 	public RestfulReply list_storenode(HttpServletRequest request, HttpServletResponse response)
 	{
 		List<StoreNode> nodes = S5Database.getInstance().results(StoreNode.class);
-		JSONArray json_nodes = new JSONArray();
-		for (StoreNode n : nodes)
-		{
-			JSONObject o = new JSONObject();
-			o.put("name", n.name);
-			o.put("ip", n.mngtIp);
-			o.put("sn", n.sn);
-			o.put("model", n.model);
-			o.put("status", n.status);
-			json_nodes.add(o);
-		}
-		RestfulReply reply = new RestfulReply(request.getParameter("op"));
-		reply.put("node_set", json_nodes);
-		reply.put("count", nodes.size());
+
+		RestfulReply reply = new ListStoreReply(request.getParameter("op"), nodes);
 		return reply;
 	}
 
+	public static class SanityCheckReply extends RestfulReply
+	{
+		public SanityCheckReply(String op, int retCode, HashMap<String, String> rst)
+		{
+			super(op);
+			results = rst;
+		}
+		public HashMap<String, String> results;
+	}
 	public RestfulReply sanity_check(HttpServletRequest request, HttpServletResponse response)
 	{
 		String op = request.getParameter("op");
@@ -156,8 +160,8 @@ public class StoreHandler
 			if (node == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
 			SshExec executer = new SshExec(node.mngtIp);
-			RestfulReply r = new RestfulReply(op);
 			boolean allok = true;
+			HashMap<String, String> r = new HashMap<>();
 			if (0 != executer.execute("echo Hello"))
 			{
 				r.put("ssh", "FAILED:" + executer.getStdout());
@@ -219,9 +223,10 @@ public class StoreHandler
 			}
 			else
 				r.put("s5bd", "OK");
+			RestfulReply reply = new SanityCheckReply(op,RetCode.OK, r);
 			if (!allok)
-				r.setRetCode(RetCode.REMOTE_ERROR);
-			return r;
+				reply.setRetCode(RetCode.REMOTE_ERROR);
+			return reply;
 		}
 		catch (Exception ex)
 		{
@@ -229,9 +234,16 @@ public class StoreHandler
 		}
 	}
 
+	public static class ListNodePortReply extends RestfulReply
+    {
+        public Port[] ports;
+        public ListNodePortReply(String op)
+        {
+            super(op);
+        }
+    }
 	public RestfulReply list_nodeport(HttpServletRequest request, HttpServletResponse response)
 	{
-		JSONArray json_nodes = new JSONArray();
 		String op = request.getParameter("op");
 		String hostname = request.getParameter("node_name");
 		if (StringUtils.isEmpty(hostname))
@@ -247,7 +259,7 @@ public class StoreHandler
 			String[] ethArray = null;
 			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eth'|awk '{print $2}'`"))
 			{
-				r.put("ssh", "FAILED:" + executer.getStdout());
+			    r.setFail(-1, executer.getStdout());
 				allok = false;
 			}
 			else
@@ -258,7 +270,7 @@ public class StoreHandler
 			}
 			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eth'|awk '{print $4}'|awk -F/ '{print $1}'`"))
 			{
-				r.put("ssh", "FAILED:" + executer.getStdout());
+                r.setFail(-1, executer.getStdout());
 				allok = false;
 			}
 			else
@@ -266,6 +278,8 @@ public class StoreHandler
 				String result = executer.getStdout();
 				result = result.replace("\n", "");
 				String[] ipArray = result.split(" ");
+                ListNodePortReply rl = new ListNodePortReply(op);
+				rl.ports=  new Port[ipArray.length];
 				for (int i = 0; i < ipArray.length; i++)
 				{
 					String ip = ipArray[i];
@@ -275,12 +289,9 @@ public class StoreHandler
 					{
 						continue;
 					}
-					map.put("ipv4", ip);
-					map.put("port_name", ethArray[i]);
-					json_nodes.add(map);
+                    rl.ports[i] = new Port(ip, ethArray[i]);
 				}
-				r.put("port_set", json_nodes);
-				r.put("count", json_nodes.size());
+				r=rl;
 			}
 			if (!allok)
 				r.setRetCode(RetCode.REMOTE_ERROR);

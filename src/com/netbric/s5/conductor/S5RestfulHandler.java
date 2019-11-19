@@ -2,14 +2,15 @@ package com.netbric.s5.conductor;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
@@ -17,12 +18,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.dieselpoint.norm.DbException;
 import com.netbric.s5.orm.StoreNode;
 import com.netbric.s5.orm.Tenant;
 import com.netbric.s5.conductor.handler.StoreHandler;
@@ -31,6 +29,10 @@ import com.netbric.s5.conductor.handler.VolumeHandler;
 import com.netbric.s5.orm.S5Database;
 import com.netbric.s5.orm.Volume;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+//public class S5RestfulHandler implements HttpHandler
 public class S5RestfulHandler extends AbstractHandler
 {
 	static final Logger logger = LoggerFactory.getLogger(S5RestfulHandler.class);
@@ -38,6 +40,15 @@ public class S5RestfulHandler extends AbstractHandler
 	TenantHandler tenantHandler = new TenantHandler();
 	StoreHandler storenodeHandler = new StoreHandler();
 
+
+	public void handle(HttpExchange t) throws IOException {
+		byte [] response = "Welcome Real's HowTo test page".getBytes();
+		t.sendResponseHeaders(200, response.length);
+		OutputStream os = t.getResponseBody();
+		os.write(response);
+		os.close();
+
+	}
 	private RestfulReply unexport_volume(HttpServletRequest request, HttpServletResponse response) throws IOException
 	{
 		String op = request.getParameter("op");
@@ -96,7 +107,7 @@ public class S5RestfulHandler extends AbstractHandler
 	}
 
 	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-			throws IOException, ServletException
+			throws IOException
 	{
 		response.setContentType("text/json; charset=utf-8");
 		response.setStatus(HttpServletResponse.SC_OK);
@@ -144,8 +155,10 @@ public class S5RestfulHandler extends AbstractHandler
 			reply = new RestfulReply(op, RetCode.INVALID_OP, ex.getMessage());
 			logger.error("Error processing:" + op, ex);
 		}
-		reply.writeJSONString(response.getWriter());
-		baseRequest.setHandled(true);
+        GsonBuilder builder = new GsonBuilder();
+        Gson gson = builder.create();
+        response.getWriter().write((gson.toJson(reply)));
+        baseRequest.setHandled(true);
 	}
 
 }
