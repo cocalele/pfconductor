@@ -47,7 +47,6 @@ public class S5RestfulHandler extends AbstractHandler
 		OutputStream os = t.getResponseBody();
 		os.write(response);
 		os.close();
-
 	}
 	private RestfulReply unexport_volume(HttpServletRequest request, HttpServletResponse response) throws IOException
 	{

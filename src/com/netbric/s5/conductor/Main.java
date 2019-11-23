@@ -28,7 +28,7 @@ public class Main
 	static final Logger logger = LoggerFactory.getLogger(Main.class);
 	private static void printUsage()
 	{
-		System.out.println("Usage: java com.netbric.s5.conductor -c <s5_config_file> -i <node_index>");
+		System.out.println("Usage: java com.netbric.s5.conductor -c <s5_config_file>");
 	}
 	public static void main(String[] args)
 	{
@@ -67,12 +67,6 @@ public class Main
 			cfgPath = "/etc/s5/s5.conf";
 			logger.warn("-c not specified, use {}", cfgPath);
 		}
-		String index =  cmd.getOptionValue("i");
-		if(index == null)
-		{
-			printUsage();
-			System.exit(1);
-		}
 		Config cfg = new Config(cfgPath);
 
 		InetAddress ia = null;
@@ -87,7 +81,7 @@ public class Main
 		}
 		String managmentIp = ia.getHostAddress();
 
-		managmentIp = cfg.getString("conductor." + cmd.getOptionValue("i"), "mngt_ip", managmentIp);
+		managmentIp = cfg.getString("conductor" , "mngt_ip", managmentIp);
 		String zkIp = cfg.getString("zookeeper", "ip", null);
 		if(zkIp == null)
 		{
@@ -97,24 +91,23 @@ public class Main
 		try
 		{
 			ClusterManager.registerAsConductor(managmentIp, zkIp);
+			ClusterManager.waitToBeMaster(managmentIp);
+
+
+			// Start the server
+			org.eclipse.jetty.server.Server srv = new org.eclipse.jetty.server.Server(49180);
+			// Add a single handler on context "/hello"
+			ContextHandler context = new ContextHandler();
+			context.setContextPath("/s5c");
+			context.setHandler(new S5RestfulHandler());
+			srv.setHandler(context);
+			srv.start();
 		}
 		catch (Exception e1)
 		{
 			e1.printStackTrace();
-			logger.error("Failt to connect zookeeper:", e1);
+			logger.error("Failed to start jconductor:", e1);
 		}
-		ClusterManager.waitToBeMaster(managmentIp);
-		MetaVolume.mount();
-
-
-        // Start the server
-        org.eclipse.jetty.server.Server srv = new org.eclipse.jetty.server.Server(49180);
-        // Add a single handler on context "/hello"
-        ContextHandler context = new ContextHandler();
-        context.setContextPath("/s5c");
-        context.setHandler(new S5RestfulHandler());
-        srv.setHandler(context);
-        srv.start();
 
         // Can be accessed using http://localhost:8080/hello
 

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="zookeeper-jute-3.5.6">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/zookeeper-jute-3.5.6.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
