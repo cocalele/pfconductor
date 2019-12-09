@@ -4,6 +4,9 @@
       <root url="jar://$PROJECT_DIR$/lib/ini4j-0.5.4.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/lib/ini4j-0.5.4-bin.zip!/ini4j-0.5.4" />
+      <root url="jar://$PROJECT_DIR$/lib/ini4j-0.5.4-bin.zip!/" />
+    </SOURCES>
   </library>
 </component>

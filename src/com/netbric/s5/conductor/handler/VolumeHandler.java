@@ -146,7 +146,7 @@ public class VolumeHandler
 
 		try
 		{
-			String tenant_name = Utils.getParamAsString(request, "tenant_name");
+			String tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			if (t == null)
 			{
@@ -162,9 +162,9 @@ public class VolumeHandler
 			}
 
 			int count = S5Database.getInstance().sql("select count(*) from t_volume where tenant_idx=?", t.idx)
-					.first(Integer.class);
+					.first(Long.class).intValue();
 
-			volume_size = Utils.getParamAsLong(request, "size", 4194304) * 1024 * 1024;
+			volume_size = Utils.getParamAsLong(request, "size", 4 << 30) ;
 
 			if (count != 0)
 			{
@@ -175,8 +175,8 @@ public class VolumeHandler
 				}
 				catch (Exception e)
 				{
-					used_size = (long) S5Database.getInstance()
-							.sql("select sum(size) from t_volume where tenant_idx=?", t.idx).first(Integer.class);
+					used_size = (long) S5Database.getInstance().sql("select sum(size) from t_volume where tenant_idx=?", t.idx)
+							.first(Integer.class);
 				}
 
 				usable_size = t.size - used_size;
@@ -194,11 +194,11 @@ public class VolumeHandler
 			replica_count = Utils.getParamAsInt(request, "replica", 1);
 			v.name = volume_name;
 			v.size = volume_size;
-			v.iops = Utils.getParamAsInt(request, "iops", 8) * 1024;
-			v.bw = Utils.getParamAsInt(request, "bw", 160) * 1024 * 1024;
+			v.iops = Utils.getParamAsInt(request, "iops", 8 << 10);
+			v.bw = Utils.getParamAsInt(request, "bw", 160 << 20);
 			v.cbs = t.iops * 2;
 			v.flag = 0;
-			v.tenant_idx = t.idx;
+			v.tenant_idx = (int)t.idx;
 			v.access = 0;
 			v.status = Volume.STATUS_OK;
 			tray_ids[0] = Utils.getParamAsInt(request, "tray_0", -1);
@@ -403,7 +403,7 @@ public class VolumeHandler
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists: " + volume_name);
 
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
-			t_idx = t.idx;
+			t_idx = (int)t.idx;
 		}
 		catch (InvalidParamException e)
 		{
@@ -435,7 +435,7 @@ public class VolumeHandler
 			if (t == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists:" + tenant_name);
 
-			int idx = t.idx;
+			int idx = (int)t.idx;
 
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			Volume volume = S5Database.getInstance().table("t_volume").where("name=?", volume_name).first(Volume.class);
@@ -513,7 +513,7 @@ public class VolumeHandler
 		int limit = 0;
 		try
 		{
-			name = Utils.getParamAsString(request, "by_tenant");
+			name = Utils.getParamAsString(request, "by_tenant", "");
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", name).first(Tenant.class);
 			if (t == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + name);

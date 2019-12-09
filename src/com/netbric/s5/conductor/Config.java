@@ -26,9 +26,17 @@ public class Config
 			System.exit(1);
 		}
 	}
-
-	public String getString(String section, String key, String defaultVal)
+	public String getString(String section, String key, String defaultVal, boolean mandatory) throws  ConfigException
 	{
-		return cfg.get(section, key, String.class);
+		String rst = cfg.get(section, key, String.class);
+		if(rst != null)
+			return rst;
+		if(mandatory)
+			throw new ConfigException(String.format("need config item %s.%s", section, key));
+        return defaultVal;
+	}
+	public String getString(String section, String key, String defaultVal)throws  ConfigException
+	{
+		return getString(section, key, defaultVal, false);
 	}
 }

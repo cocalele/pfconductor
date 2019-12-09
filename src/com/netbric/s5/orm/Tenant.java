@@ -8,7 +8,6 @@ import javax.persistence.Table;
 public class Tenant
 {
 	@Id
-	@GeneratedValue
 	public int idx;
 	public int car_id;
 	public String name;// varchar(96),
@@ -23,9 +22,10 @@ public class Tenant
 	{
 	};
 
-	public Tenant(int car_id, String name, String passwd, int auth, int size, int iops, int cbs, int bw)
+	public Tenant(int idx, int car_id, String name, String passwd, int auth, int size, int iops, int cbs, int bw)
 	{
 		super();
+		this.idx = idx;
 		this.car_id = car_id;
 		this.name = name;
 		this.pass_wd = passwd;

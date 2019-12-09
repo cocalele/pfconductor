@@ -3,6 +3,7 @@ package com.netbric.s5.conductor;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import com.netbric.s5.orm.S5Database;
 import org.apache.commons.cli.CommandLine;
 
 import org.apache.commons.cli.CommandLineParser;
@@ -81,18 +82,18 @@ public class Main
 		}
 		String managmentIp = ia.getHostAddress();
 
-		managmentIp = cfg.getString("conductor" , "mngt_ip", managmentIp);
-		String zkIp = cfg.getString("zookeeper", "ip", null);
-		if(zkIp == null)
-		{
-			System.err.println("zookeeper ip not specified in config file");
-			System.exit(1);
-		}
 		try
 		{
+			managmentIp = cfg.getString("conductor" , "mngt_ip", managmentIp);
+			String zkIp = cfg.getString("zookeeper", "ip", null, true);
+			if(zkIp == null)
+			{
+				System.err.println("zookeeper ip not specified in config file");
+				System.exit(1);
+			}
 			ClusterManager.registerAsConductor(managmentIp, zkIp);
 			ClusterManager.waitToBeMaster(managmentIp);
-
+			S5Database.getInstance().init(cfg);
 
 			// Start the server
 			org.eclipse.jetty.server.Server srv = new org.eclipse.jetty.server.Server(49180);
@@ -102,6 +103,7 @@ public class Main
 			context.setHandler(new S5RestfulHandler());
 			srv.setHandler(context);
 			srv.start();
+			logger.info("HTTP started on port 49180");
 		}
 		catch (Exception e1)
 		{

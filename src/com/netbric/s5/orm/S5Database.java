@@ -6,6 +6,7 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
+import com.netbric.s5.conductor.ConfigException;
 import org.apache.commons.lang3.SystemUtils;
 
 import com.dieselpoint.norm.Database;
@@ -14,11 +15,16 @@ import com.zaxxer.hikari.HikariDataSource;
 
 public class S5Database extends Database
 {
+	// MySQL 8.0 以下版本 - JDBC 驱动名及数据库 URL
+//	static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
+
+	// MySQL 8.0 以上版本 - JDBC 驱动名及数据库 URL
+	static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
 	static
 	{
 		try
 		{
-			Class.forName("org.sqlite.JDBC");
+			Class.forName(JDBC_DRIVER);
 		}
 		catch (ClassNotFoundException e)
 		{
@@ -35,6 +41,19 @@ public class S5Database extends Database
 	}
 
 	static S5Database instance = new S5Database();
+	private String dbIp;
+	private String dbUser;
+	private String dbPass;
+	private String dbName;
+
+	public void init(com.netbric.s5.conductor.Config cfg) throws ConfigException
+	{
+		dbIp = cfg.getString("db", "ip", null, true);
+		dbUser = cfg.getString("db", "user", null, true);
+		dbPass = cfg.getString("db", "pass", null, true);
+		dbName = cfg.getString("db", "db_name", null, true);
+
+	}
 
 	public static S5Database getInstance()
 	{
@@ -48,18 +67,12 @@ public class S5Database extends Database
 		// Connection connection = null;
 		try
 		{
-			// Class.forName("org.sqlite.JDBC");
-			// create a database connection
-			// connection =
-			// DriverManager.getConnection("jdbc:sqlite:C:/data/workspace/s5-iscsi/res/s5_iscsi.db");
 			HikariConfig config = new HikariConfig();
 			config.setMaximumPoolSize(100);
-			config.setDataSourceClassName(System.getProperty("org.sqlite.JDBC"));
-			if (SystemUtils.IS_OS_WINDOWS)
-				config.setJdbcUrl("jdbc:sqlite:C:/data/workspace/PureFlash/jconductor/res/s5meta.db");
-			else
-				config.setJdbcUrl("jdbc:sqlite:/etc/s5/s5_iscsi.db");
-
+//			config.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
+			config.setJdbcUrl(String.format("jdbc:mysql://%s:3306/%s?useSSL=false&serverTimezone=UTC", dbIp, dbName));
+			config.setUsername(dbUser);
+			config.setPassword(dbPass);
 			return new HikariDataSource(config);
 
 		}

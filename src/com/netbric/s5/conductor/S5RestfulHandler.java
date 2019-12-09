@@ -41,13 +41,6 @@ public class S5RestfulHandler extends AbstractHandler
 	StoreHandler storenodeHandler = new StoreHandler();
 
 
-	public void handle(HttpExchange t) throws IOException {
-		byte [] response = "Welcome Real's HowTo test page".getBytes();
-		t.sendResponseHeaders(200, response.length);
-		OutputStream os = t.getResponseBody();
-		os.write(response);
-		os.close();
-	}
 	private RestfulReply unexport_volume(HttpServletRequest request, HttpServletResponse response) throws IOException
 	{
 		String op = request.getParameter("op");
@@ -111,6 +104,7 @@ public class S5RestfulHandler extends AbstractHandler
 		response.setContentType("text/json; charset=utf-8");
 		response.setStatus(HttpServletResponse.SC_OK);
 		String op = request.getParameter("op");
+		logger.debug("API called: op={}", op);
 		RestfulReply reply;
 		try
 		{
