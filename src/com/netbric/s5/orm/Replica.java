@@ -10,11 +10,9 @@ import javax.persistence.Transient;
 public class Replica
 {
 	@Id
-	@GeneratedValue
-	@Column(name = "idx")
-	public int idx;
-	public int volume_idx;
-	public int store_idx;
+	public long id;
+	public long volume_id;
+	public int store_id;
 	public int tray_id;
 	public int status;
 
@@ -27,18 +25,18 @@ public class Replica
 	{
 	};
 
-	public Replica(int idx, int volume_idx, int tray_id, int status, int store_idx)
+	public Replica(long idx, long volume_id, int tray_id, int status, int store_id)
 	{
 		super();
-		this.volume_idx = volume_idx;
-		this.store_idx = store_idx;
+		this.volume_id = volume_id;
+		this.store_id = store_id;
 		this.tray_id = tray_id;
 		this.status = status;
 	}
 
 	@Transient
-	public int getReplicaId()
+	public long getReplicaId()
 	{
-		return volume_idx << 8 | tray_id;
+		return volume_id << 8 | tray_id;
 	}
 }

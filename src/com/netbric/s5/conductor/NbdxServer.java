@@ -34,11 +34,11 @@ public class NbdxServer
 	public static MountTarget[] exposeVolume(Volume vol, List<Replica> reps_) throws OperateException, IOException
 	{
 		Replica[] reps = reps_.toArray(new Replica[reps_.size()]);
-		StringBuilder sb = new StringBuilder(reps[0].store_idx + "");
+		StringBuilder sb = new StringBuilder(reps[0].store_id + "");
 		for (int i = 1; i < reps.length; i++)
-			sb.append("," + reps[i].store_idx);
+			sb.append("," + reps[i].store_id);
 
-		List<StoreNode> nodes = S5Database.getInstance().where("idx in (" + sb.toString() + ")")
+		List<StoreNode> nodes = S5Database.getInstance().where("id in (" + sb.toString() + ")")
 				.results(StoreNode.class);
 		SshExec[] sshs = new SshExec[nodes.size()];
 		String[] devNames = new String[nodes.size()];
@@ -47,7 +47,7 @@ public class NbdxServer
 			StoreNode n = nodes.get(i);
 			sshs[i] = new SshExec(n.mngtIp);
 
-			String devSuffix = "s5r_" + vol.tenant_idx + "_" + vol.name;
+			String devSuffix = "s5r_" + vol.tenant_id + "_" + vol.name;
 			devNames[i] = "/dev/" + devSuffix;
 			// map --toe_ip <toe_ip> --toe_port <toe_port> --volume_id
 			// <volume_id> --volume_size <volume_size(M)> [--dev_name
@@ -65,15 +65,15 @@ public class NbdxServer
 		for (int i = 1; i < reps.length; i++)
 		{
 			if (0 != sshs[0].execute(
-					"nbdxadm -o create_device -i " + reps[i].store_idx + " -d " + reps[i].idx + " -f " + devNames[i]))
+					"nbdxadm -o create_device -i " + reps[i].store_id + " -d " + reps[i].id + " -f " + devNames[i]))
 			{
 				logger.error("Execute command on: {},{}, stdout:{}", sshs[0].targetIp, sshs[0].lastCli,
 						sshs[0].getStdout());
 				throw new OperateException("nbdxadm failed on node:" + sshs[0].targetIp);
 			}
-			devNames[i] = "/dev/nbdx" + reps[i].idx;
+			devNames[i] = "/dev/nbdx" + reps[i].id;
 		}
-		String primaryDevName = "/dev/md/s5v_" + vol.tenant_idx + "_" + vol.name;
+		String primaryDevName = "/dev/md/s5v_" + vol.tenant_id + "_" + vol.name;
 		if (0 != sshs[0]
 				.execute("yes | mdadm -q --create " + primaryDevName + " --homehost= --level=1 --force --raid-devices="
 						+ reps.length + " --spare-devices=0 " + StringUtils.join(devNames, ' ')))
@@ -128,14 +128,14 @@ public class NbdxServer
 	public static MountTarget[] unexposeVolume(Volume vol, List<Replica> reps_) throws OperateException, IOException
 	{
 		Replica[] reps = reps_.toArray(new Replica[reps_.size()]);
-		StringBuilder sb = new StringBuilder(reps[0].store_idx + "");
+		StringBuilder sb = new StringBuilder(reps[0].store_id + "");
 		for (int i = 1; i < reps.length; i++)
-			sb.append("," + reps[i].store_idx);
+			sb.append("," + reps[i].store_id);
 	
-		List<StoreNode> nodes = S5Database.getInstance().where("idx in (" + sb.toString() + ")")
+		List<StoreNode> nodes = S5Database.getInstance().where("id in (" + sb.toString() + ")")
 				.results(StoreNode.class);
 		SshExec[] sshs = new SshExec[nodes.size()];
-		String primaryDevName = "/dev/md/s5v_" + vol.tenant_idx + "_" + vol.name;
+		String primaryDevName = "/dev/md/s5v_" + vol.tenant_id + "_" + vol.name;
 	
 		for (int i = 0; i < reps.length; i++)
 		{
@@ -151,7 +151,7 @@ public class NbdxServer
 				logger.error("Execute command on: {},{}, stdout:{}", sshs[i].targetIp, sshs[i].lastCli,
 						sshs[i].getStdout());
 			}
-			String devSuffix = "s5r_" + vol.tenant_idx + "_" + vol.name;
+			String devSuffix = "s5r_" + vol.tenant_id + "_" + vol.name;
 			if (0 != sshs[i].execute("s5bd unmap -n " + devSuffix))
 			{
 				logger.error("Execute command on: {},{}, stdout:{}", sshs[i].targetIp, sshs[i].lastCli,

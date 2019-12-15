@@ -1,17 +1,12 @@
 package com.netbric.s5.orm;
 
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
+import javax.persistence.*;
 
 @Table(name = "t_volume")
 public class Volume
 {
 	@Id
-	@GeneratedValue
-	public int idx;
+	public long id;
 	public int car_id;
 	public String name;// varchar(96),
 	public int access;
@@ -20,15 +15,17 @@ public class Volume
 	public int cbs;
 	public int bw;
 	@OneToOne
-	@JoinColumn(name = "idx")
-	public int tenant_idx;
+	@JoinColumn(name = "id")
+	@JoinTable(name="t_tenant")
+	public int tenant_id;
 	@OneToOne
-	@JoinColumn(name = "idx")
-	public int quotaset_idx;
+	@JoinColumn(name = "id")
+	@JoinTable(name="t_quotaset")
+	public int quotaset_id;
 	public int flag;
 	public int status; // values can be one of STATUS_XXX
 	public int exposed;
-	public int primary_rep_idx;
+	public int primary_rep_id;
 
 	// following values are copied from C definition to enum s5c_volume_status
 	public final static int STATUS_OK = 1; /// < 0001, status OK
@@ -54,8 +51,8 @@ public class Volume
 		this.iops = iops;
 		this.cbs = cbs;
 		this.bw = bw;
-		this.tenant_idx = tenant_idx;
-		this.quotaset_idx = quotaset_idx;
+		this.tenant_id = tenant_idx;
+		this.quotaset_id = quotaset_idx;
 		this.flag = flag;
 		this.status = status;
 	}

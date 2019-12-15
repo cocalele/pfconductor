@@ -52,7 +52,7 @@ public class StoreHandler
 
 			n.model = " ";
 			n.sn = n.name + "-0000AB00";
-			n.status = StoreNode.STATUS_USABLE;
+			n.status = StoreNode.STATUS_OK;
 
 		}
 		catch (InvalidParamException e)
@@ -72,15 +72,7 @@ public class StoreHandler
 			t.bit = 0;
 			t.firmware = 0;
 			t.raw_capacity = 8L << 40;
-			t.set0_name = "SET-" + i + "-0";
-			t.set0_status = 0;
-			t.set0_model = "NBS1503";
-			t.set0_bit = 0;
-			t.set1_name = "SET-" + i + "-1";
-			t.set1_status = 0;
-			t.set1_model = "NBS1503";
-			t.set1_bit = 0;
-			t.store_idx = n.idx;
+			t.store_id = n.id;
 			S5Database.getInstance().insert(t);
 		}
 
@@ -104,7 +96,7 @@ public class StoreHandler
 			e.printStackTrace();
 		}
 		Integer count = S5Database.getInstance()
-				.sql("select count(*) from t_replica as r,t_s5store as t where r.store_idx=t.idx and t.name=?", name)
+				.sql("select count(*) from t_replica as r,t_s5store as t where r.store_id=t.id and t.name=?", name)
 				.first(Integer.class);
 
 		if (count > 0)
@@ -116,7 +108,7 @@ public class StoreHandler
 		{
 			S5Database.getInstance().table("t_s5store").where("name=?", name).delete();
 
-			S5Database.getInstance().sql("delete from t_tray where store_idx=?", s.idx).execute();
+			S5Database.getInstance().sql("delete from t_tray where store_id=?", s.id).execute();
 
 			return new RestfulReply(op);
 		}

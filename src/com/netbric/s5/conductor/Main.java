@@ -94,6 +94,8 @@ public class Main
 			ClusterManager.registerAsConductor(managmentIp, zkIp);
 			ClusterManager.waitToBeMaster(managmentIp);
 			S5Database.getInstance().init(cfg);
+			ClusterManager.watchStores();
+			ClusterManager.updateStoresFromZk();
 
 			// Start the server
 			org.eclipse.jetty.server.Server srv = new org.eclipse.jetty.server.Server(49180);

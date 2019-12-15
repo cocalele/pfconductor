@@ -8,7 +8,7 @@ import javax.persistence.Table;
 public class Tenant
 {
 	@Id
-	public int idx;
+	public int id;
 	public int car_id;
 	public String name;// varchar(96),
 	public String pass_wd;
@@ -25,7 +25,7 @@ public class Tenant
 	public Tenant(int idx, int car_id, String name, String passwd, int auth, int size, int iops, int cbs, int bw)
 	{
 		super();
-		this.idx = idx;
+		this.id = idx;
 		this.car_id = car_id;
 		this.name = name;
 		this.pass_wd = passwd;

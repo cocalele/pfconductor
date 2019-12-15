@@ -23,5 +23,7 @@
     <orderEntry type="library" name="jetty-util-9.2.16.v20160414" level="project" />
     <orderEntry type="library" name="zookeeper-jute-3.5.6" level="project" />
     <orderEntry type="library" name="mysql-connector-java-8.0.18" level="project" />
+    <orderEntry type="library" name="jetty-http-9.2.16.v20160414" level="project" />
+    <orderEntry type="library" name="jetty-io-9.2.16.v20160414" level="project" />
   </component>
 </module>

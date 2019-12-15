@@ -9,35 +9,24 @@ import javax.persistence.Table;
 public class StoreNode
 {
 	@Id
-	@GeneratedValue
-	public int idx;
+	public int id;
 	public String name;
 	public String sn;
 	public String model;
-	public int status; // value can be one of S5C_STORE_XXX,
+	public String status;
 	@Column(name = "mngt_ip")
 	public String mngtIp;
 
 	// following values are copied from C definition to s5c_store_status
-	public static final int STATUS_NULL = -1;
-	public static final int STATUS_USABLE = 0;
-	public static final int STATUS_UNUSABLE = 1;
-	public static final int STATUS_INVALID = 2;
+	public static final String STATUS_OK = "OK";
+	public static final String STATUS_OFFLINE = "OFFLINE";
+	public static final String STATUS_ERROR = "ERROR";
 
 	/**
 	 * return hostname as String representation.
 	 */
 	public StoreNode()
 	{
-	};
-
-	public StoreNode(String name, String sn, String model, String mngtIp, int status)
-	{
-		this.name = name;
-		this.sn = sn;
-		this.model = model;
-		this.status = status;
-		this.mngtIp = mngtIp;
 	};
 
 	@Override

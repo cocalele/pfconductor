@@ -9,22 +9,14 @@ public class Tray
 {
 	@Id
 	@GeneratedValue
-	public int idx;
+	public int id;
 	public String name;// varchar(96),
 	public int status; // value can be on of STATE_XXX
 	public String model;
 	public int bit;
 	public int firmware;
 	public long raw_capacity;
-	public String set0_name;
-	public int set0_status;
-	public String set0_model;
-	public int set0_bit;
-	public String set1_name;
-	public int set1_status;
-	public String set1_model;
-	public int set1_bit;
-	public int store_idx;
+	public int store_id;
 
 	public static final int STATUS_OK = 0;
 	public static final int STATUS_NA = 1;
@@ -39,26 +31,16 @@ public class Tray
 	{
 	};
 
-	public Tray(int idx, String name, int status, String model, int bit, int firmware, long raw_capacity,
-			String set0_name, int set0_status, String set0_model, int set0_bit, String set1_name, int set1_status,
-			String set1_model, int set1_bit, int store_idx)
+	public Tray(int idx, String name, int status, String model, int bit, int firmware, long raw_capacity, int store_idx)
 	{
 		super();
-		this.idx = idx;
+		this.id = idx;
 		this.name = name;
 		this.status = status;
 		this.model = model;
 		this.bit = bit;
 		this.firmware = firmware;
 		this.raw_capacity = raw_capacity;
-		this.set0_name = set0_name;
-		this.set0_status = set0_status;
-		this.set0_model = set0_model;
-		this.set0_bit = set0_bit;
-		this.set0_name = set1_name;
-		this.set0_status = set1_status;
-		this.set0_model = set1_model;
-		this.set0_bit = set1_bit;
-		this.store_idx = store_idx;
+		this.store_id = store_idx;
 	}
 }
