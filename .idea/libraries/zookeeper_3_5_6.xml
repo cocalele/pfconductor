@@ -4,6 +4,9 @@
       <root url="jar://$PROJECT_DIR$/lib/zookeeper-3.5.6.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../PureFlash/thirdParty/zookeeper/zookeeper-server/src/main/java" />
+      <root url="file://$PROJECT_DIR$/../PureFlash/thirdParty/zookeeper/zookeeper-server/src/test/java" />
+    </SOURCES>
   </library>
 </component>
