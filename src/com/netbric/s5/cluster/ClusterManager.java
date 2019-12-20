@@ -3,9 +3,10 @@ package com.netbric.s5.cluster;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import com.netbric.s5.orm.S5Database;
+import com.netbric.s5.orm.Status;
+import com.netbric.s5.orm.Tray;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -85,12 +86,14 @@ public class ClusterManager
 				List<String> list = zk.getChildren("/s5/conductors", true);
 				String[] nodes = list.toArray(new String[list.size()]);
 				Arrays.sort(nodes);
-				while (!(new String(zk.getData("/s5/conductors/" + nodes[0], true, null))).equals(managmentIp))
+				while (true)
 				{
-					logger.info("the master is {}, not me, waiting...",
-							new String(zk.getData("/s5/conductors/" + nodes[0], true, null)));
+					String leader = new String(zk.getData("/s5/conductors/" + nodes[0], true, null));
+					if(leader.equals(managmentIp))
+						break;
+					logger.info("the master is {}, not me, waiting...",	leader);
 					locker.wait();
-					list = zk.getChildren("/s5", true);
+					list = zk.getChildren("/s5/conductors", true);
 					nodes = list.toArray(new String[list.size()]);
 					Arrays.sort(nodes);
 				}
@@ -149,11 +152,11 @@ public class ClusterManager
 
 	}
 
-	public static  void watchStoreAlive(String mngtIp,
+	public static  void watchStoreAlive(int id,
 												java.util.function.BiConsumer<EventType, String> func) {
 		new Thread(()->{
 			try {
-				String path = String.format("/s5/stores/%s/alive", mngtIp);
+				String path = String.format("/s5/stores/%d/alive", id);
 				zk.exists(path, new Watcher() {
 					@Override
 					public void process(WatchedEvent event) {
@@ -180,24 +183,54 @@ public class ClusterManager
 			List<String> nodes = zk.getChildren("/s5/stores", null);
 			for(String n : nodes)
 			{
-				updateStoreFromZk(n);
+				updateStoreFromZk(Integer.parseInt(n));
 			}
 		} catch (KeeperException | InterruptedException e) {
 			logger.error("Failed access zk",e);
 		}
 
 	}
-	public static void updateStoreFromZk(String ip)
-	{
-		String path = String.format("/s5/stores/%s", ip);
+	public static void updateStoreFromZk(int id)  {
+		String path = String.format("/s5/stores/%d", id);
 
 		StoreNode n = new StoreNode();
-		n.mngtIp = ip;
+		try {
+			n.mngtIp = new String(zk.getData(path+"/mngt_ip", false, null));
+		} catch (KeeperException | InterruptedException e ) {
+			logger.error("Failed update store from ZK:", e);
+			return;
+		}
+		n.id=id;
 		n.status = StoreNode.STATUS_OK;
-		if(S5Database.getInstance().sql("select count(*) from t_s5store where mngt_ip=?", ip).first(long.class) == 0)
+		if(S5Database.getInstance().sql("select count(*) from t_s5store where id=?", id).first(long.class) == 0)
 			S5Database.getInstance().insert(n);
 		else
 			S5Database.getInstance().update(n);
+		updateStoreTrays(id);
+	}
+	public static void updateStoreTrays(int  store_id)
+	{
+		try {
+			List<String> trays = zk.getChildren("/s5/stores/"+store_id+"/trays", null);
+			for(String t : trays)
+			{
+
+				Tray tr = new Tray();
+				tr.uuid = t;
+				tr.status = Status.OK;
+				tr.store_id =store_id;
+				tr.device = new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/devname", false, null));
+				tr.raw_capacity = Long.parseLong(new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
+				if(S5Database.getInstance().sql("select count(*) from t_tray where uuid=?", t).first(long.class) == 0)
+					S5Database.getInstance().insert(tr);
+				else
+					S5Database.getInstance().update(tr);
+
+			}
+		} catch (KeeperException | InterruptedException e) {
+			logger.error("Failed update tray from zk",e);
+		}
+
 	}
 	public static void watchStores()
 	{
@@ -207,9 +240,14 @@ public class ClusterManager
 				logger.info("{} on path: {}", evt, path);
 				if(evt == EventType.NodeCreated)
 				{
-					String mngtIp = path.substring(path.lastIndexOf('/')+1);
+					int id = Integer.parseInt(path.substring(path.lastIndexOf('/')+1));
 
-					watchStoreAlive(mngtIp, (EventType evt2, String path2)->{});
+					watchStoreAlive(id, (EventType evt2, String path2)->{
+						if(evt == EventType.NodeCreated)
+						{
+							updateStoreFromZk(id);
+						}
+					});
 
 				}
 

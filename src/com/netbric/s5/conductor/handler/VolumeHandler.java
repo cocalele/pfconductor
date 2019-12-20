@@ -49,7 +49,7 @@ public class VolumeHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
 		Volume vol = S5Database.getInstance()
-				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.name=? and t_volume.name=? and t_volume.tenant_id=t_tenant.id",
+				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.device=? and t_volume.device=? and t_volume.tenant_id=t_tenant.id",
 						tenant_name, volume_name)
 				.first(Volume.class);
 		if (vol == null)
@@ -98,7 +98,7 @@ public class VolumeHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
 		Volume vol = S5Database.getInstance()
-				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.name=? and t_volume.name=? and t_volume.tenant_id=t_tenant.id",
+				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.device=? and t_volume.device=? and t_volume.tenant_id=t_tenant.id",
 						tenant_name, volume_name)
 				.first(Volume.class);
 		if (vol == null)
@@ -147,7 +147,7 @@ public class VolumeHandler
 		try
 		{
 			String tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
+			Tenant t = S5Database.getInstance().table("t_tenant").where("device=?", tenant_name).first(Tenant.class);
 			if (t == null)
 			{
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
@@ -155,7 +155,7 @@ public class VolumeHandler
 
 			String volume_name = Utils.getParamAsString(request, "volume_name");
 			Volume volume = S5Database.getInstance().table("t_volume")
-					.where("name=? AND tenant_id=?", volume_name, t.id).first(Volume.class);
+					.where("device=? AND tenant_id=?", volume_name, t.id).first(Volume.class);
 			if (volume != null)
 			{
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume already exists: " + volume_name);
@@ -295,7 +295,7 @@ public class VolumeHandler
 			for (int i = 0; i < replica_count; i++)
 			{
 				StoreNode s = S5Database.getInstance().table("t_s5store")
-						.where("name=? AND status=?", store_names[i], StoreNode.STATUS_OK).first(StoreNode.class);
+						.where("device=? AND status=?", store_names[i], StoreNode.STATUS_OK).first(StoreNode.class);
 				store_ids[i] = s.id;
 			}
 
@@ -304,9 +304,9 @@ public class VolumeHandler
 				for (int i = 0; i < replica_count; i++)
 				{
 					S5Database.getInstance()
-							.sql("select t_tray.id from t_tray, v_tray_free_size where name=? and t_tray.store_id=? and "
+							.sql("select t_tray.id from t_tray, v_tray_free_size where device=? and t_tray.store_id=? and "
 									+ " t_tray.status=0 and v_tray_free_size.free_size>=? and v_tray_free_size.store_id=t_tray.store_id "
-									+ "and v_tray_free_size.tray_id=cast(substr(t_tray.name,6) as int) ",
+									+ "and v_tray_free_size.tray_id=cast(substr(t_tray.device,6) as int) ",
 							"TRAY-" + tray_ids[i], store_ids[i], volume_size).first(Integer.class);
 				}
 				return new RestfulReply(op);
@@ -393,16 +393,16 @@ public class VolumeHandler
 		try
 		{
 			tenant_name = Utils.getParamAsString(request, "tenant_name");
-			Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
+			Tenant tenant = S5Database.getInstance().table("t_tenant").where("device=?", tenant_name).first(Tenant.class);
 			if (tenant == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
 
 			volume_name = Utils.getParamAsString(request, "volume_name");
-			Volume volume = S5Database.getInstance().table("t_volume").where("name=?", volume_name).first(Volume.class);
+			Volume volume = S5Database.getInstance().table("t_volume").where("device=?", volume_name).first(Volume.class);
 			if (volume == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists: " + volume_name);
 
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
+			Tenant t = S5Database.getInstance().table("t_tenant").where("device=?", tenant_name).first(Tenant.class);
 			t_idx = (int)t.id;
 		}
 		catch (InvalidParamException e)
@@ -410,10 +410,10 @@ public class VolumeHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
 		}
 		int rowaffected = S5Database.getInstance()
-				.sql("delete from t_replica where t_replica.volume_id in (select t_volume.id from t_volume where name='"
+				.sql("delete from t_replica where t_replica.volume_id in (select t_volume.id from t_volume where device='"
 						+ volume_name + "' and tenant_id=" + t_idx + ")")
 				.execute().getRowsAffected();
-		int r = S5Database.getInstance().table("t_volume").where("name=? AND tenant_id=?", volume_name, t_idx).delete()
+		int r = S5Database.getInstance().table("t_volume").where("device=? AND tenant_id=?", volume_name, t_idx).delete()
 				.getRowsAffected();
 		if (r == 1)
 			return new RestfulReply(op);
@@ -431,18 +431,18 @@ public class VolumeHandler
 		try
 		{
 			String tenant_name = Utils.getParamAsString(request, "tenant_name");
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
+			Tenant t = S5Database.getInstance().table("t_tenant").where("device=?", tenant_name).first(Tenant.class);
 			if (t == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists:" + tenant_name);
 
 			int idx = (int)t.id;
 
 			volume_name = Utils.getParamAsString(request, "volume_name");
-			Volume volume = S5Database.getInstance().table("t_volume").where("name=?", volume_name).first(Volume.class);
+			Volume volume = S5Database.getInstance().table("t_volume").where("device=?", volume_name).first(Volume.class);
 			if (volume == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists:" + volume_name);
 
-			nv = S5Database.getInstance().table("t_volume").where("name=? AND tenant_id=?", volume_name, idx)
+			nv = S5Database.getInstance().table("t_volume").where("device=? AND tenant_id=?", volume_name, idx)
 					.first(Volume.class);
 			nv.name = Utils.getParamAsString(request, "new_volume_name", nv.name);
 
@@ -514,7 +514,7 @@ public class VolumeHandler
 		try
 		{
 			name = Utils.getParamAsString(request, "by_tenant", "");
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", name).first(Tenant.class);
+			Tenant t = S5Database.getInstance().table("t_tenant").where("device=?", name).first(Tenant.class);
 			if (t == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + name);
 
@@ -524,10 +524,10 @@ public class VolumeHandler
 		{
 			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
 		}
-		int tenant_idx = S5Database.getInstance().sql("select id from t_tenant where name=?", name)
+		int tenant_idx = S5Database.getInstance().sql("select id from t_tenant where device=?", name)
 				.first(Integer.class);
 		List<Volume> volumes = S5Database.getInstance()
-				.sql("select name, size, iops, bw from t_volume where tenant_id=?", tenant_idx).results(Volume.class);
+				.sql("select device, size, iops, bw from t_volume where tenant_id=?", tenant_idx).results(Volume.class);
 
 		if (limit >= volumes.size())
 			limit = volumes.size();

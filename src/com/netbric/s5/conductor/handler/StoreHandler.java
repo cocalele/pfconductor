@@ -17,6 +17,7 @@ import com.netbric.s5.conductor.Utils;
 import com.netbric.s5.orm.S5Database;
 import com.netbric.s5.orm.StoreNode;
 import com.netbric.s5.orm.Tray;
+import com.netbric.s5.orm.Status;
 
 /**
  * handle all request related with store node, include - add - delete - query
@@ -40,8 +41,8 @@ public class StoreHandler
 		String op = request.getParameter("op");
 		try
 		{
-			n.name = Utils.getParamAsString(request, "name");
-			StoreNode s = S5Database.getInstance().table("t_s5store").where("name=?", n.name).first(StoreNode.class);
+			n.name = Utils.getParamAsString(request, "device");
+			StoreNode s = S5Database.getInstance().table("t_s5store").where("device=?", n.name).first(StoreNode.class);
 			if (s != null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "store node already exists:" + n.name);
 
@@ -66,11 +67,8 @@ public class StoreHandler
 		for (int i = 0; i < 20; ++i)
 		{
 
-			t.name = "Tray-" + i;
-			t.status = 0;
-			t.model = "NBT1503";
-			t.bit = 0;
-			t.firmware = 0;
+			t.device = "Tray-" + i;
+			t.status = Status.OK;
 			t.raw_capacity = 8L << 40;
 			t.store_id = n.id;
 			S5Database.getInstance().insert(t);
@@ -86,8 +84,8 @@ public class StoreHandler
 		StoreNode s = null;
 		try
 		{
-			name = Utils.getParamAsString(request, "name");
-			s = S5Database.getInstance().table("t_s5store").where("name=?", name).first(StoreNode.class);
+			name = Utils.getParamAsString(request, "device");
+			s = S5Database.getInstance().table("t_s5store").where("device=?", name).first(StoreNode.class);
 			if (s == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "store node not exists:" + name);
 		}
@@ -96,7 +94,7 @@ public class StoreHandler
 			e.printStackTrace();
 		}
 		Integer count = S5Database.getInstance()
-				.sql("select count(*) from t_replica as r,t_s5store as t where r.store_id=t.id and t.name=?", name)
+				.sql("select count(*) from t_replica as r,t_s5store as t where r.store_id=t.id and t.device=?", name)
 				.first(Integer.class);
 
 		if (count > 0)
@@ -106,7 +104,7 @@ public class StoreHandler
 		}
 		else
 		{
-			S5Database.getInstance().table("t_s5store").where("name=?", name).delete();
+			S5Database.getInstance().table("t_s5store").where("device=?", name).delete();
 
 			S5Database.getInstance().sql("delete from t_tray where store_id=?", s.id).execute();
 
@@ -123,11 +121,27 @@ public class StoreHandler
 		}
 		List<StoreNode> storeNodes;
 	}
+	static class ListTrayReply extends RestfulReply
+	{
+		public ListTrayReply(String op, List<Tray> trays)
+		{
+			super(op);
+			this.trays = trays;
+		}
+		List<Tray> trays;
+	}
 	public RestfulReply list_storenode(HttpServletRequest request, HttpServletResponse response)
 	{
 		List<StoreNode> nodes = S5Database.getInstance().results(StoreNode.class);
 
 		RestfulReply reply = new ListStoreReply(request.getParameter("op"), nodes);
+		return reply;
+	}
+	public RestfulReply list_tray(HttpServletRequest request, HttpServletResponse response)
+	{
+		List<Tray> trays = S5Database.getInstance().results(Tray.class);
+
+		RestfulReply reply = new ListTrayReply(request.getParameter("op"), trays);
 		return reply;
 	}
 
@@ -148,7 +162,7 @@ public class StoreHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: hostname");
 		try
 		{
-			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
+			StoreNode node = S5Database.getInstance().where("device=?", hostname).first(StoreNode.class);
 			if (node == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
 			SshExec executer = new SshExec(node.mngtIp);
@@ -242,7 +256,7 @@ public class StoreHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: node_name");
 		try
 		{
-			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
+			StoreNode node = S5Database.getInstance().where("device=?", hostname).first(StoreNode.class);
 			if (node == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
 			SshExec executer = new SshExec(node.mngtIp);

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
+import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.sun.net.httpserver.HttpExchange;
@@ -118,6 +119,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = storenodeHandler.list_storenode(request, response);
 			else if ("list_node_port".equals(op))
 				reply = storenodeHandler.list_nodeport(request, response);
+			else if ("list_tray".equals(op))
+				reply = storenodeHandler.list_tray(request, response);
 			else if ("create_tenant".equals(op))
 				reply = tenantHandler.createTenant(request, response);
 			else if ("update_tenant".equals(op))
@@ -148,7 +151,7 @@ public class S5RestfulHandler extends AbstractHandler
 			reply = new RestfulReply(op, RetCode.INVALID_OP, ex.getMessage());
 			logger.error("Error processing:" + op, ex);
 		}
-        GsonBuilder builder = new GsonBuilder();
+        GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
         Gson gson = builder.create();
         response.getWriter().write((gson.toJson(reply)));
         baseRequest.setHandled(true);
