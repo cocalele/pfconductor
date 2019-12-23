@@ -52,7 +52,7 @@ public class NbdxServer
 			// map --toe_ip <toe_ip> --toe_port <toe_port> --volume_id
 			// <volume_id> --volume_size <volume_size(M)> [--dev_name
 			// <dev_name>]
-			if (0 != sshs[i].execute("s5bd map --toe_ip 127.0.0.1 --toe_port 0 --volume_id " + reps[i].getReplicaId()
+			if (0 != sshs[i].execute("s5bd map --toe_ip 127.0.0.1 --toe_port 0 --volume_id " + reps[i].id
 					+ " --volume_size " + (vol.size >> 20) + " --dev_name " + devSuffix))
 			{
 				logger.error("Execute command on: {},{}, stdout:{}", sshs[i].targetIp, sshs[i].lastCli,

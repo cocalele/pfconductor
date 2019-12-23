@@ -1,8 +1,12 @@
 package com.netbric.s5.orm;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.SQLDataException;
 import java.sql.SQLException;
+import java.util.HashMap;
 
 import javax.sql.DataSource;
 
@@ -81,5 +85,19 @@ public class S5Database extends Database
 			System.err.println(e.getMessage());
 		}
 		return null;
+	}
+
+	public long queryLongValue(String sql,  Object... args) throws SQLException {
+		HashMap m = sql(sql, args).first(HashMap.class);
+		for (Object value : m.values()) {
+			if(value instanceof  BigDecimal)
+				return ((BigDecimal)value).longValue();
+			if(value instanceof BigInteger)
+				return ((BigInteger)value).longValue();
+			if(value instanceof Integer)
+				return ((Integer)value).longValue();
+		}
+		throw new SQLException(String.format("No valid result returned for sql:%s %s", sql, args));
+
 	}
 }
