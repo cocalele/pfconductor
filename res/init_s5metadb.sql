@@ -28,7 +28,7 @@ create table t_tenant(
 	name varchar(96) unique not null, 
 	pass_wd varchar(256) not null, 
 	auth int not null, 
-	size int not null, 
+	size bigint not null, 
 	iops int not null, 
 	cbs int not null, 
 	bw int not null);
@@ -65,21 +65,19 @@ create table t_s5store(
 --15 --- '11 11' all read-write
 create table t_volume(
 	id bigint primary key not null, 
-	car_id integer not null, 
 	name varchar(96) not null, 
-	access int not null, 
-	size int not null, 
+	size bigint not null, 
 	iops int not null , 
 	cbs int not null, 
 	bw int not null, 
 	tenant_id integer not null, 
-	quotaset_id integer not null, 
-	flag int not null, 
+	quotaset_id integer, 
 	status varchar(16), 
-	exposed boolean default(0),
+	exposed boolean default(false),
 	primary_rep_id integer,
-	foreign key (tenant_id) references t_tenant(id), 
-	foreign key (quotaset_id) references t_quotaset(id));
+	rep_count integer, 
+	foreign key (tenant_id) references t_tenant(id)
+	);
 
 
 create view v_id as select id from t_tenant union all select id from t_volume union all select id from t_quotaset;
@@ -117,21 +115,32 @@ create table t_replica(
 	id bigint primary key AUTO_INCREMENT , 
 	volume_id bigint,
 	store_id integer,
-	tray_id	integer,
+	tray_uuid	varchar(64),
 	status varchar(16));
 
 create view v_store_alloc_size as  select store_id, sum(size) as alloc_size from t_volume, t_replica where t_volume.id=t_replica.volume_id group by t_replica.store_id;
 create view v_store_total_size as  select store_id, sum(t.raw_capacity) as total_size from t_tray as t where t.status=0 group by t.store_id;
 create view v_store_free_size as select t.store_id, t.total_size, COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size 
  from v_store_total_size as t left join v_store_alloc_size as a on t.store_id=a.store_id order by free_size desc;
-create view v_tray_alloc_size as select  t_replica.store_id as store_id, tray_id, sum(size) as alloc_size from t_volume, t_replica where t_volume.id = t_replica.volume_id group by t_replica.tray_id , t_replica.store_id;	
-create view v_tray_total_size as select store_id, uuid as tray_id, raw_capacity as total_size, status from t_tray;
-create view v_tray_free_size as select t.store_id as store_id, t.tray_id as tray_id, t.total_size as total_size,
- COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size, t.status as status from v_tray_total_size as t left join v_tray_alloc_size as a on t.store_id=a.store_id and t.tray_id=a.tray_id order by free_size desc;
--- select store_id, tray_id, max(free_size) from v_tray_free_size group by store_id;
+create view v_tray_alloc_size as select  t_replica.store_id as store_id, tray_uuid, sum(size) as alloc_size from t_volume, t_replica where t_volume.id = t_replica.volume_id group by t_replica.tray_uuid , t_replica.store_id;	
+create view v_tray_total_size as select store_id, uuid as tray_uuid, raw_capacity as total_size, status from t_tray;
+create view v_tray_free_size as select t.store_id as store_id, t.tray_uuid as tray_uuid, t.total_size as total_size,
+ COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size, t.status as status from v_tray_total_size as t left join v_tray_alloc_size as a on t.store_id=a.store_id and t.tray_uuid=a.tray_uuid order by free_size desc;
+-- select store_id, tray_uuid, max(free_size) from v_tray_free_size group by store_id;
 
 --table used to generate sequence, val keep the latest available value
 create table t_seq_gen(
 	name varchar(32) primary key,
 	val	integer not null);
 insert into t_seq_gen values("vol_id", 66);
+DROP FUNCTION IF EXISTS gen_volume_id;
+DELIMITER $$
+CREATE FUNCTION gen_volume_id() RETURNS BIGINT UNSIGNED
+BEGIN
+  DECLARE v BIGINT UNSIGNED;
+  UPDATE t_seq_gen SET val=LAST_INSERT_ID(val+1) where name="vol_id";
+  SELECT LAST_INSERT_ID() into v;
+  RETURN v;
+END;
+$$
+DELIMITER ;
