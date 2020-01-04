@@ -19,9 +19,8 @@ public class Volume
 	public int quotaset_id;
 	public String status;
 	public boolean exposed;
-	public int primary_rep_id;
 	public int rep_count; //replica count, 1, 2, 3
-
+	public long shard_size; //shard size, default 64G
 
 	public Volume()
 	{

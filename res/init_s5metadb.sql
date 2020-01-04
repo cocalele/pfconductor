@@ -1,4 +1,5 @@
-
+create database s5 ;
+use s5;
 drop view if exists v_id;
 drop view  if exists v_store_use;
 
@@ -18,7 +19,7 @@ drop table  if exists t_nic;
 drop table  if exists t_tray;
 drop table  if exists t_task_journal;
 drop table  if exists t_seq_gen;
-drop table  if exists t_s5store;
+drop table  if exists t_store;
 --'auth' column of 'tenant' describes access permission level of current tenant, 0 indicates normal user, 1 indicates administrator, -1 invalid tenant
 -- car id from 0 ~ 63 is reserved for special usage, and will not be set to rge.
 -- 
@@ -52,7 +53,7 @@ create table t_quotaset(
 
 insert into t_quotaset(id, car_id, name, iops, cbs, bw, tenant_id) values(65, 1, 'quotaset_default', 0, 0, 0, 0);
 
-create table t_s5store(
+create table t_store(
 	id integer primary key, 
 	name varchar(96) , 
 	sn varchar(128) , 
@@ -74,23 +75,32 @@ create table t_volume(
 	quotaset_id integer, 
 	status varchar(16), 
 	exposed boolean default(false),
-	primary_rep_id integer,
 	rep_count integer, 
+	shard_size bigint default(64<<30),
+	status_time datetime not null default current_timestamp on update current_timestamp,
 	foreign key (tenant_id) references t_tenant(id)
 	);
 
 
 create view v_id as select id from t_tenant union all select id from t_volume union all select id from t_quotaset;
 
+create table if not exists t_shard (
+    id bigint unsigned not null primary key,
+    volume_id bigint unsigned not null,
+    shard_index bigint unsigned not null,
+    primary_rep_index bigint unsigned not null,
+    status char(16),
+	status_time datetime not null default current_timestamp on update current_timestamp,
+	index(volume_id)
+);
 
 
-create table t_nic(
-	id integer primary key AUTO_INCREMENT , 
-	name varchar(96) not null, 
-	ip_addr varchar(16) unique not null,
-	mask varchar(16) not null, 
-	mac varchar(18) unique not null, 
-	seq_in_daemon integer not null, 
+
+
+create table t_port(
+	ip_addr varchar(16) primary key,
+	store_id int,
+	purpose int, -- normal/replicating access 
 	status varchar(16) not null
 	);
 
@@ -100,22 +110,16 @@ create table t_tray(
 	status varchar(16) not null, 
 	raw_capacity long not null, 
 	store_id integer not null,
-	foreign key (store_id) references t_s5store(id));
-
-
-
-create table t_task_journal(
-	id integer primary key AUTO_INCREMENT , 
-	type integer not null, 
-	task blob, 
-	time DATETIME not null default  CURRENT_TIMESTAMP
-);
+	foreign key (store_id) references t_store(id));
 
 create table t_replica(
 	id bigint primary key AUTO_INCREMENT , 
+	replica_index int,
 	volume_id bigint,
+	shard_id bigint,
 	store_id integer,
 	tray_uuid	varchar(64),
+	status_time datetime not null default current_timestamp on update current_timestamp,
 	status varchar(16));
 
 create view v_store_alloc_size as  select store_id, sum(size) as alloc_size from t_volume, t_replica where t_volume.id=t_replica.volume_id group by t_replica.store_id;
@@ -127,6 +131,11 @@ create view v_tray_total_size as select store_id, uuid as tray_uuid, raw_capacit
 create view v_tray_free_size as select t.store_id as store_id, t.tray_uuid as tray_uuid, t.total_size as total_size,
  COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size, t.status as status from v_tray_total_size as t left join v_tray_alloc_size as a on t.store_id=a.store_id and t.tray_uuid=a.tray_uuid order by free_size desc;
 -- select store_id, tray_uuid, max(free_size) from v_tray_free_size group by store_id;
+
+create view v_replica_ext as
+select v.id as volume_id, v.name as volume_name, s.id as shard_id, s.shard_index as shard_index, r.id as replica_id, r.replica_index as replica_index, r.status_time as status_time,
+if(s.primary_rep_index=r.replica_index, 1, 0) as is_primary, r.store_id, r.tray_uuid, r.status
+from t_volume as v, t_shard as s, t_replica as r  where v.id=s.volume_id and s.id=r.shard_id;
 
 --table used to generate sequence, val keep the latest available value
 create table t_seq_gen(

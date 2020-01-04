@@ -1,11 +1,13 @@
 package com.netbric.s5.orm;
 
+import com.netbric.s5.conductor.handler.VolumeHandler;
+
 import javax.persistence.Column;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
-@Table(name = "t_s5store")
+@Table(name = "t_store")
 public class StoreNode
 {
 	@Id
@@ -35,5 +37,4 @@ public class StoreNode
 		return name; // return hostname only, StringUtils.join use it to
 						// concatenate nodes
 	}
-
 }

@@ -141,6 +141,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.expose_volume(request, response);
 			else if ("unexpose_volume".equals(op))
 				reply = volumeHandler.unexpose_volume(request, response);
+			else if ("open_volume".equals(op))
+				reply = volumeHandler.open_volume(request, response);
 			else
 			{
 				reply = new RestfulReply(op, RetCode.INVALID_OP, "Invalid op:" + op);

@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 
 public class Config
 {
+	public static final long DEFAULT_SHARD_SIZE=64L<<30;
 	final Logger logger = LoggerFactory.getLogger(Config.class);
 	Wini cfg;
 

@@ -10,7 +10,7 @@ public class RestfulReply
 	private static final long serialVersionUID = 1L;
     public String reason;
     public String op;
-	public int retCode;
+	public int retCode;//code defined in interface RetCode
 
 	@SuppressWarnings("unchecked")
 	public RestfulReply(String op)

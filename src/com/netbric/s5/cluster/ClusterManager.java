@@ -202,7 +202,7 @@ public class ClusterManager
 		}
 		n.id=id;
 		n.status = StoreNode.STATUS_OK;
-		if(S5Database.getInstance().sql("select count(*) from t_s5store where id=?", id).first(long.class) == 0)
+		if(S5Database.getInstance().sql("select count(*) from t_store where id=?", id).first(long.class) == 0)
 			S5Database.getInstance().insert(n);
 		else
 			S5Database.getInstance().update(n);

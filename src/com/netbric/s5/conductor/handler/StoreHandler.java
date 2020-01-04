@@ -29,7 +29,7 @@ public class StoreHandler
 {
 
 	/**
-	 * backend handler of CLI s5_add_s5store_node.py
+	 * backend handler of CLI s5_add_store_node.py
 	 * 
 	 * @param request
 	 * @param response
@@ -42,12 +42,12 @@ public class StoreHandler
 		try
 		{
 			n.name = Utils.getParamAsString(request, "device");
-			StoreNode s = S5Database.getInstance().table("t_s5store").where("device=?", n.name).first(StoreNode.class);
+			StoreNode s = S5Database.getInstance().table("t_store").where("name=?", n.name).first(StoreNode.class);
 			if (s != null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "store node already exists:" + n.name);
 
 			n.mngtIp = Utils.getParamAsString(request, "mngt_ip");
-			s = S5Database.getInstance().table("t_s5store").where("mngt_ip=?", n.mngtIp).first(StoreNode.class);
+			s = S5Database.getInstance().table("t_store").where("mngt_ip=?", n.mngtIp).first(StoreNode.class);
 			if (s != null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "store node ip already exists:" + n.mngtIp);
 
@@ -85,7 +85,7 @@ public class StoreHandler
 		try
 		{
 			name = Utils.getParamAsString(request, "device");
-			s = S5Database.getInstance().table("t_s5store").where("device=?", name).first(StoreNode.class);
+			s = S5Database.getInstance().table("t_store").where("name=?", name).first(StoreNode.class);
 			if (s == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "store node not exists:" + name);
 		}
@@ -94,17 +94,17 @@ public class StoreHandler
 			e.printStackTrace();
 		}
 		Integer count = S5Database.getInstance()
-				.sql("select count(*) from t_replica as r,t_s5store as t where r.store_id=t.id and t.device=?", name)
+				.sql("select count(*) from t_replica as r,t_store as t where r.store_id=t.id and t.name=?", name)
 				.first(Integer.class);
 
 		if (count > 0)
 		{
 			return new RestfulReply(op, RetCode.INVALID_STATE,
-					"Deleted s5store error, as there are replicas under the s5store!");
+					"Deleted store error, as there are replicas under the store!");
 		}
 		else
 		{
-			S5Database.getInstance().table("t_s5store").where("device=?", name).delete();
+			S5Database.getInstance().table("t_store").where("name=?", name).delete();
 
 			S5Database.getInstance().sql("delete from t_tray where store_id=?", s.id).execute();
 
@@ -162,7 +162,7 @@ public class StoreHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: hostname");
 		try
 		{
-			StoreNode node = S5Database.getInstance().where("device=?", hostname).first(StoreNode.class);
+			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
 			if (node == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
 			SshExec executer = new SshExec(node.mngtIp);
@@ -256,7 +256,7 @@ public class StoreHandler
 			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: node_name");
 		try
 		{
-			StoreNode node = S5Database.getInstance().where("device=?", hostname).first(StoreNode.class);
+			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
 			if (node == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
 			SshExec executer = new SshExec(node.mngtIp);

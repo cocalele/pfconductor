@@ -10,4 +10,5 @@ public class Status {
     public static final String ONLINE="ONLINE";
     public static final String OFFLINE="OFFLINE";
     public static final String DEGRADED="DEGRADED";
+    public static final String MAINTAIN="MAINTAIN";
 }

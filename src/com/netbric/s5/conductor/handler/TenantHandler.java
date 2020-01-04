@@ -23,7 +23,7 @@ public class TenantHandler
 		try
 		{
 			t.name = Utils.getParamAsString(request, "tenant_name");
-			Tenant tenant = S5Database.getInstance().table("t_tenant").where("device=?", t.name).first(Tenant.class);
+			Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", t.name).first(Tenant.class);
 			if (tenant != null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant already exists:" + t.name);
 			t.pass_wd = Utils.getParamAsString(request, "tenant_passwd", "123456");
@@ -48,7 +48,7 @@ public class TenantHandler
 		try
 		{
 			name = Utils.getParamAsString(request, "tenant_name");
-			Tenant tenant = S5Database.getInstance().table("t_tenant").where("device=?", name).first(Tenant.class);
+			Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", name).first(Tenant.class);
 			if (tenant == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists:" + name);
 		}
@@ -57,7 +57,7 @@ public class TenantHandler
 			e.printStackTrace();
 		}
 		Integer vols = S5Database.getInstance()
-				.sql("select count(*) from t_volume as v,t_tenant as t where v.tenant_idx=t.idx and t.device=?", name)
+				.sql("select count(*) from t_volume as v,t_tenant as t where v.tenant_idx=t.idx and t.name=?", name)
 				.first(Integer.class);
 		if (vols > 0)
 		{
@@ -66,7 +66,7 @@ public class TenantHandler
 		}
 		else
 		{
-			S5Database.getInstance().table("t_tenant").where("device=?", name).delete();
+			S5Database.getInstance().table("t_tenant").where("name=?", name).delete();
 			return new RestfulReply(op);
 		}
 	}
@@ -80,7 +80,7 @@ public class TenantHandler
 		try
 		{
 			tenant_name = Utils.getParamAsString(request, "tenant_name");
-			nt = S5Database.getInstance().table("t_tenant").where("device=?", tenant_name).first(Tenant.class);
+			nt = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			if (nt == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists:" + tenant_name);
 			nt.name = Utils.getParamAsString(request, "new_tenant_name", nt.name);
