@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import com.netbric.s5.orm.S5Database;
-import com.netbric.s5.orm.Status;
-import com.netbric.s5.orm.Tray;
+import com.netbric.s5.orm.*;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -17,8 +15,6 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.netbric.s5.orm.StoreNode;
 
 import static org.apache.zookeeper.Watcher.Event.EventType.NodeCreated;
 import static org.apache.zookeeper.Watcher.Event.EventType.NodeDeleted;
@@ -207,6 +203,7 @@ public class ClusterManager
 		else
 			S5Database.getInstance().update(n);
 		updateStoreTrays(id);
+		updateStorePorts(id);
 	}
 	public static void updateStoreTrays(int  store_id)
 	{
@@ -232,6 +229,29 @@ public class ClusterManager
 		}
 
 	}
+
+	public static void updateStorePorts(int  store_id)
+	{
+		try {
+			List<String> ports = zk.getChildren("/s5/stores/"+store_id+"/ports", null);
+			for(String ip : ports)
+			{
+				String purpose = new String(zk.getData("/s5/stores/"+store_id+"/ports/"+ip+"/purpose", false, null));
+				Port p = new Port();
+				p.ip_addr = ip;
+				p.store_id = store_id;
+				p.name = ip;
+				p.purpose = Integer.parseInt(purpose);
+				p.status = Status.OK;
+
+				S5Database.getInstance().upsert(p);
+			}
+		} catch (KeeperException | InterruptedException e) {
+			logger.error("Failed update tray from zk",e);
+		}
+
+	}
+
 	public static void watchStores()
 	{
 //		BiConsumer<org.apache.zookeeper.Watcher.Event.EventType, String> c =

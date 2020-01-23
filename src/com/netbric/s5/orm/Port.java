@@ -1,19 +1,22 @@
 package com.netbric.s5.orm;
 
+import javax.persistence.Table;
+
 /**
  * Created by liulele on 2019/11/19.
  */
+@Table(name = "t_port")
 public class Port {
-    public static final int NORMAL = 1; //purpose normal access
-    public static final int REPLICATING = 2;//purpose replicating access
+    public static final int DATA = 0; //purpose normal access
+    public static final int REPLICATING = 1;//purpose replicating access
 
-    public String ipv4;
+    public String ip_addr;
+    @javax.persistence.Transient
     public String name;
     public int purpose;
-    public int storeId;
+    public int store_id;
+    public String status;
 
-    public Port(String ipv4, String name) {
-        this.ipv4 = ipv4;
-        this.name = name;
+    public Port() {
     }
 }

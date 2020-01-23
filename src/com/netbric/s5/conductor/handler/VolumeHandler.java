@@ -1,5 +1,6 @@
 package com.netbric.s5.conductor.handler;
 
+import com.dieselpoint.norm.Transaction;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -59,7 +60,6 @@ public class VolumeHandler
 	};
 	public class OpenVolumeReply extends RestfulReply
 	{
-		public String op;
 		public String status;
 		public String volume_name;
 		public long volume_size;
@@ -194,11 +194,12 @@ public class VolumeHandler
 		long usable_size = 0;
 
 		Volume v = new Volume();
-
+		Transaction trans = null;
 		try
 		{
+			trans = S5Database.getInstance().startTransaction();
 			String tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
+			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).transaction(trans).first(Tenant.class);
 			if (t == null)
 			{
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
@@ -206,7 +207,7 @@ public class VolumeHandler
 
 			String volume_name = Utils.getParamAsString(request, "name");
 			Volume volume = S5Database.getInstance().table("t_volume")
-					.where("name=? AND tenant_id=?", volume_name, t.id).first(Volume.class);
+					.where("name=? AND tenant_id=?", volume_name, t.id).transaction(trans).first(Volume.class);
 			if (volume != null)
 			{
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume already exists: " + volume_name);
@@ -216,12 +217,12 @@ public class VolumeHandler
 
 			if(t.size > 0)
 			{
-			int count = S5Database.getInstance().sql("select count(*) from t_volume where tenant_id=?", t.id)
+			int count = S5Database.getInstance().sql("select count(*) from t_volume where tenant_id=?", t.id).transaction(trans)
 					.first(Long.class).intValue();
 
 				if (count != 0)
 				{
-					HashMap m = S5Database.getInstance().sql("select sum(size) as used from t_volume where tenant_id=?", t.id)
+					HashMap m = S5Database.getInstance().sql("select sum(size) as used from t_volume where tenant_id=?", t.id).transaction(trans)
 								.first(HashMap.class);
 					Object o = m.get("used");
 					used_size = ((BigDecimal)o).longValue();
@@ -260,52 +261,52 @@ public class VolumeHandler
 			store_name[0] = Utils.getParamAsString(request, "store_0", null);
 			store_name[1] = Utils.getParamAsString(request, "store_1", null);
 			store_name[2] = Utils.getParamAsString(request, "store_2", null);
+			select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
 
+
+			S5Database.getInstance().transaction(trans).insert(v);
+			long shardCount = (v.size + v.shard_size-1)/v.shard_size;
+			for(int shardIndex = 0; shardIndex<shardCount;shardIndex++)
+			{
+				Shard shard = new Shard();
+				shard.id=v.id | (shardIndex<<4);
+				shard.primary_rep_index = 0;
+				shard.volume_id = v.id;
+				shard.status=Status.OK;
+				shard.status_time = Timestamp.valueOf(LocalDateTime.now());
+				S5Database.getInstance().insert(shard);
+				for (int i = 0; i < v.rep_count; i++)
+				{
+					Replica r = new Replica();
+					r.id=shard.id | i;
+					r.shard_id =shard.id;
+					r.volume_id = v.id;
+					r.store_id = store_idx[i];
+					r.tray_uuid = tray_ids[i];
+					r.status = Status.OK;
+					r.replica_index = i;
+					r.status_time = Timestamp.valueOf(LocalDateTime.now());
+					S5Database.getInstance().transaction(trans).insert(r);
+				}
+			}
+			trans.commit();;
 		}
 		catch (InvalidParamException | SQLException e)
 		{
+			trans.rollback();;
 			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
 		}
 
-		RestfulReply ret = select_store(op, v.rep_count, volume_size, store_name, tray_ids, store_idx);
-		if (ret.retCode != 0)
-		{
-			return ret;
-		}
 
-		S5Database.getInstance().insert(v);
-		long shardCount = (v.size + v.shard_size-1)/v.shard_size;
-		for(int shardIndex = 0; shardIndex<shardCount;shardIndex++)
-		{
-			Shard shard = new Shard();
-			shard.id=v.id | (shardIndex<<4);
-			shard.primary_rep_index = 0;
-			shard.volume_id = v.id;
-			shard.status=Status.OK;
-			shard.status_time = Timestamp.valueOf(LocalDateTime.now());
-			S5Database.getInstance().insert(shard);
-			for (int i = 0; i < v.rep_count; i++)
-			{
-				Replica r = new Replica();
-				r.id=shard.id | i;
-				r.volume_id = v.id;
-				r.store_id = store_idx[i];
-				r.tray_uuid = tray_ids[i];
-				r.status = Status.OK;
-				r.status_time = Timestamp.valueOf(LocalDateTime.now());
-				S5Database.getInstance().insert(r);
-			}
-		}
 
 		return new RestfulReply(op);
 	}
 
-	private RestfulReply select_store(String op, int replica_count, long volume_size, String[] store_names,
-			String[] tray_ids, int[] store_ids)
-	{
+	private void select_store(Transaction trans, int replica_count, long volume_size, String[] store_names,
+			String[] tray_ids, int[] store_ids) throws InvalidParamException {
 		if (replica_count != 1 && replica_count != 3)
 		{
-			return new RestfulReply(op, RetCode.INVALID_ARG, "invalid replica count");
+			throw new InvalidParamException(String.format("invalid replica count:%d", replica_count));
 		}
 
 		boolean store_specified = false;
@@ -314,8 +315,7 @@ public class VolumeHandler
 		{
 			if (StringUtils.isEmpty(store_names[i]) && store_specified == true)
 			{
-				return new RestfulReply(op, RetCode.INVALID_ARG,
-						"replica count is" + replica_count + "but num." + i + "store is not specified");
+				throw new InvalidParamException("replica count is" + replica_count + "but num." + i + "store is not specified");
 			}
 
 			if (store_names[i] != null)
@@ -323,8 +323,7 @@ public class VolumeHandler
 
 			if (tray_ids[i] == null && tray_specified == true)
 			{
-				return new RestfulReply(op, RetCode.INVALID_ARG,
-						"replica count is" + replica_count + "but num." + i + "store is not specified");
+				throw new InvalidParamException("replica count is" + replica_count + "but num." + i + "store is not specified");
 			}
 
 			if (tray_ids[i] != null)
@@ -333,8 +332,7 @@ public class VolumeHandler
 
 		if (!store_specified && tray_specified)
 		{
-			return new RestfulReply(op, RetCode.INVALID_ARG,
-					"if user choose to specify stores when create volume, trays must be also specified");
+			throw new InvalidParamException("if user choose to specify stores when create volume, trays must be also specified");
 		}
 
 		store_ids[0] = -1;
@@ -349,13 +347,13 @@ public class VolumeHandler
 			}
 			if (replica_count != store_num)
 			{
-				return new RestfulReply(op, RetCode.INVALID_ARG, "replica count is not equal to store count");
+				throw new InvalidParamException("replica count is not equal to store count");
 			}
 
 			for (int i = 0; i < replica_count; i++)
 			{
 				StoreNode s = S5Database.getInstance().table("t_store")
-						.where("name=? AND status=?", store_names[i], StoreNode.STATUS_OK).first(StoreNode.class);
+						.where("name=? AND status=?", store_names[i], StoreNode.STATUS_OK).transaction(trans).first(StoreNode.class);
 				store_ids[i] = s.id;
 			}
 
@@ -367,32 +365,20 @@ public class VolumeHandler
 							.sql("select t_tray.id from t_tray, v_tray_free_size where name=? and t_tray.store_id=? and "
 									+ " t_tray.status=0 and v_tray_free_size.free_size>=? and v_tray_free_size.store_id=t_tray.store_id "
 									+ "and v_tray_free_size.tray_uuid=t_tray.uuid ",
-							"TRAY-" + tray_ids[i], store_ids[i], volume_size).first(Integer.class);
+							"TRAY-" + tray_ids[i], store_ids[i], volume_size).transaction(trans).first(Integer.class);
 				}
-				return new RestfulReply(op);
+				return;
 			}
 		}
 
-		RestfulReply ret = select_suitable_store_tray(op, replica_count, volume_size, store_names, store_ids, tray_ids);
-		try
-		{
-			int r = (int) ret.retCode;
-			if (r != 0)
-				return ret;
-		}
-		catch (Exception e)
-		{
-
-		}
-		return new RestfulReply(op);
+		select_suitable_store_tray(trans, replica_count, volume_size, store_names, store_ids, tray_ids);
+		return;
 	}
 
-	private RestfulReply select_suitable_store_tray(String op, int replica_count, long volume_size,
-			String[] store_names, int[] store_ids, String[] tray_ids)
-	{
+	private void select_suitable_store_tray(Transaction trans, int replica_count, long volume_size,
+			String[] store_names, int[] store_ids, String[] tray_ids) throws InvalidParamException {
 		if (store_ids[0] == -1)
 		{
-
 			// the following SQL:
 			// 1. t.free_size > volume_size, filter only the tray with
 			// sufficient space
@@ -403,11 +389,11 @@ public class VolumeHandler
 					.sql("select t.store_id,t.tray_uuid,max(t.free_size) as max_tray, "
 							+ "s.free_size as store_free from v_tray_free_size as t,v_store_free_size as s "
 							+ "where t.store_id = s.store_id and t.free_size>=? and t.status=0 "
-							+ "group by t.store_id order by s.free_size desc limit 3 ", volume_size)
+							+ "group by t.store_id order by s.free_size desc limit 3 ", volume_size).transaction(trans)
 					.results(HashMap.class);
 
 			if (list.size() < replica_count)
-				return new RestfulReply(op, RetCode.INVALID_ARG, "only" + list.size()
+				throw new InvalidParamException("only" + list.size()
 						+ "stores has tray with capacity over" + volume_size + "but replica is" + replica_count);
 
 			// now choose tray for replica^M
@@ -426,18 +412,16 @@ public class VolumeHandler
 			{
 				List<HashMap> list = S5Database.getInstance()
 						.sql("select store_id, tray_uuid, max(free_size),0 from v_tray_free_size where free_size >=? and store_id=? and status=0",
-								volume_size, store_ids[i])
+								volume_size, store_ids[i]).transaction(trans)
 						.results(HashMap.class);
 
 				if (list.size() < 1)
-					return new RestfulReply(op, RetCode.INVALID_ARG,
-							"store user specified for replica" + i + "has no tray with capacity over" + volume_size);
+					throw new InvalidParamException("store user specified for replica" + i + "has no tray with capacity over" + volume_size);
 
 				for (HashMap h : list)
 					tray_ids[i] = (String) h.get("tray_uuid");
 			}
 		}
-		return null;
 	}
 
 	public RestfulReply delete_volume(HttpServletRequest request, HttpServletResponse response)
@@ -640,50 +624,70 @@ public class VolumeHandler
 		return arg;
 	}
 	public RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws IOException, InterruptedException, TimeoutException, ExecutionException {
+		arg.op="prepare_volume";
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
 		Gson gson = builder.create();
 		String jsonStr = gson.toJson(arg);
 
+		logger.info("Prepare volume:{} on node:{}, {}", arg.volume_name, s.mngtIp, jsonStr);
 		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-		ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=prepare_volume&name=?",
-				s.mngtIp, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
-				.method(org.eclipse.jetty.http.HttpMethod.POST)
-				.content(new org.eclipse.jetty.client.util.StringContentProvider(jsonStr), "application/json")
-				.send();
+		try {
+			client.start();
+			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=prepare_volume&name=?",
+					s.mngtIp, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
+					.method(org.eclipse.jetty.http.HttpMethod.POST)
+					.content(new org.eclipse.jetty.client.util.StringContentProvider(jsonStr), "application/json")
+					.send();
+			logger.info("Get response:{}", response.getContentAsString());
+			if(response.getStatus() < 200 || response.getStatus() >= 300)
+			{
+				throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d, reason:%s",
+						arg.volume_name, s.mngtIp, response.getStatus(), response.getReason()));
+			}
+			RestfulReply r = gson.fromJson(new String(response.getContent()), RestfulReply.class);
+			client.stop();
+			if(r.retCode == RetCode.OK)
+				logger.info("Succeed prepare_volume:{} on node:{}", arg.volume_name, s.mngtIp);
+			else
+				logger.error("Failed to prepare_volume:{} on node:%s, code:%d, reason:{}", arg.volume_name, s.mngtIp, r.retCode, r.reason);
+			return r;
+		} catch (Exception e) {
+			throw new IOException(e);
+		}
 
-
-		return gson.fromJson(new String(response.getContent()), RestfulReply.class);
 	}
 
 	private void markReplicasOnStoreAsError(int storeId, long volumeId)
 	{
-		S5Database.getInstance().sql("update t_replica set status='ERROR' where volume_id=? and store_id=?", volumeId, storeId);
+		S5Database.getInstance().sql("update t_replica set status='ERROR' where volume_id=? and store_id=?", volumeId, storeId).execute();
+	}
+
+	public static class TempShard
+	{
+		public long store_id;
+		public long is_primary;
+		public long shard_index;
+		public TempShard() {}
 	}
 
 	private OpenVolumeReply getVolumeInfoForClient(long volumeId)
 	{
 		Volume v = S5Database.getInstance().where("id=?", volumeId).first(Volume.class);
-		List<Port> ports = S5Database.getInstance().sql("select t_port.* from t_port, t_store where t_port.purpose=? and port.store_id=store.id and (store.status=? or store.status=?)",
-				Port.NORMAL, Status.OK, Status.MAINTAIN).results(Port.class);
+		List<Port> ports = S5Database.getInstance().sql("select t_port.* from t_port, t_store where t_port.purpose=? and t_port.store_id=t_store.id and (t_store.status=? or t_store.status=?)",
+				Port.DATA, Status.OK, Status.MAINTAIN).results(Port.class);
 		HashMap<Integer, ArrayList<String>> portMap = new HashMap<>();
 		for(Iterator<Port> it=ports.iterator();it.hasNext();)
 		{
 			Port p = it.next();
-			if(portMap.containsKey(p.storeId))
-				portMap.get(p.storeId).add(p.ipv4);
+			if(portMap.containsKey(p.store_id))
+				portMap.get(p.store_id).add(p.ip_addr);
 			else {
 				ArrayList<String> ips = new ArrayList<>(4);
-				ips.add(p.ipv4);
-				portMap.put(p.storeId, ips);
+				ips.add(p.ip_addr);
+				portMap.put(p.store_id, ips);
 			}
 		}
 
-		class TempShard
-		{
-			public long storeId;
-			public int isPrimary;
-			public int shardIndex;
-		}
 
 		List<TempShard> rawShards = S5Database.getInstance().sql("select store_id, is_primary, shard_index from v_replica_ext as r\n" +
 				" where  volume_id=? and r.status='OK' order by shard_index, is_primary desc, status_time asc, replica_index asc", volumeId).results(TempShard.class);
@@ -691,23 +695,25 @@ public class VolumeHandler
 		for(Iterator<TempShard> it=rawShards.iterator(); it.hasNext(); )
 		{
 			TempShard s = it.next();
-			ShardInfoForClient shard = shards.get(s.shardIndex);
+			ShardInfoForClient shard = shards.get(s.shard_index);
 			if(shard == null)
 			{
 				shard = new ShardInfoForClient();
-				shard.index = s.shardIndex;
-				shard.store_ips = (ArrayList<String>)portMap.get(s.storeId).clone();
-				shards.put(s.shardIndex, shard);
+				shard.index = (int)s.shard_index;
+				if(portMap.containsKey((int)s.store_id))
+					shard.store_ips = (ArrayList<String>)portMap.get((int)s.store_id).clone();
+				else
+					logger.error("No available port for store:{}", s.store_id);
+				shards.put((int)s.shard_index, shard);
 			}
 			else
 			{
-				shard.store_ips.addAll(portMap.get(s.storeId));
+				shard.store_ips.addAll(portMap.get((int)s.store_id));
 			}
 
 		}
 
 		OpenVolumeReply reply = new OpenVolumeReply("open_volume", RetCode.OK, null);
-		reply.op="open_volume";
 		reply.volume_id=v.id;
 		reply.volume_name=v.name;
 		reply.rep_count=v.rep_count;
@@ -734,7 +740,7 @@ public class VolumeHandler
 					return new RestfulReply(op, RetCode.INVALID_STATE, String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
 				}
 				List<StoreNode> stores = S5Database.getInstance()
-						.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? )",
+						.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK')",
 								arg.volume_id).results(StoreNode.class);
 
 				for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
@@ -742,11 +748,11 @@ public class VolumeHandler
 					try {
 						RestfulReply rply = prepareVolumeOnStore(s, arg);
 						if (rply.retCode != RetCode.OK) {
-							logger.error("Failed to prepare volume %{} on store:%{}, for:{}", volume_name, s.mngtIp, rply.reason);
+							logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, rply.reason);
 							return rply;
 						}
 					} catch (IOException | InterruptedException | TimeoutException | ExecutionException e) {
-						logger.error("Failed to prepare volume %{} on store:%{}, for:{}", volume_name, s.mngtIp, e);
+						logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
 						markReplicasOnStoreAsError(s.id, arg.volume_id);
 						need_reprepare = true;
 						break;

@@ -295,7 +295,9 @@ public class StoreHandler
 					{
 						continue;
 					}
-                    rl.ports[i] = new Port(ip, ethArray[i]);
+                    rl.ports[i] = new Port();
+					rl.ports[i].ip_addr = ip;
+					rl.ports[i].name = ethArray[i];
 				}
 				r=rl;
 			}

@@ -114,11 +114,11 @@ create table t_tray(
 
 create table t_replica(
 	id bigint primary key AUTO_INCREMENT , 
-	replica_index int,
-	volume_id bigint,
-	shard_id bigint,
-	store_id integer,
-	tray_uuid	varchar(64),
+	replica_index int not null,
+	volume_id bigint  not null,
+	shard_id bigint not null,
+	store_id integer not null,
+	tray_uuid	varchar(64) not null,
 	status_time datetime not null default current_timestamp on update current_timestamp,
 	status varchar(16));
 
@@ -136,6 +136,12 @@ create view v_replica_ext as
 select v.id as volume_id, v.name as volume_name, s.id as shard_id, s.shard_index as shard_index, r.id as replica_id, r.replica_index as replica_index, r.status_time as status_time,
 if(s.primary_rep_index=r.replica_index, 1, 0) as is_primary, r.store_id, r.tray_uuid, r.status
 from t_volume as v, t_shard as s, t_replica as r  where v.id=s.volume_id and s.id=r.shard_id;
+
+create view v_replica_full as select v.id as volume_id, v.name as volume_name, s.id as shard_id, s.shard_index as shard_index, r.id as replica_id, 
+t.id as tenant_id, r.replica_index as replica_index, r.status_time as status_time, if(s.primary_rep_index=r.replica_index, 1, 0) as is_primary, 
+r.store_id, r.tray_uuid, r.status  from t_volume as v, t_shard as s, t_replica as r , t_tenant as t 
+where v.id=s.volume_id and s.id=r.shard_id and t.id=v.tenant_id;
+
 
 --table used to generate sequence, val keep the latest available value
 create table t_seq_gen(

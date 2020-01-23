@@ -11,7 +11,9 @@ public class Replica
 	@Id
 	public long id;
 	public long volume_id;
+	public long shard_id;
 	public int store_id;
+	public int replica_index;
 	public String tray_uuid;
 	public String status;
 	public Timestamp status_time;

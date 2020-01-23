@@ -10,6 +10,7 @@ import java.util.HashMap;
 
 import javax.sql.DataSource;
 
+import com.dieselpoint.norm.sqlmakers.MySqlMaker;
 import com.netbric.s5.conductor.ConfigException;
 import org.apache.commons.lang3.SystemUtils;
 
@@ -45,6 +46,9 @@ public class S5Database extends Database
 	}
 
 	static S5Database instance = new S5Database();
+	static {
+		instance.setSqlMaker(new MySqlMaker());
+	}
 	private String dbIp;
 	private String dbUser;
 	private String dbPass;
