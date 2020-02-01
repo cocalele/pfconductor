@@ -1,0 +1,3 @@
+[submodule "thirdpary/norm"]
+	path = thirdpary/norm
+	url = https://github.com/cocalele/norm.git

@@ -39,6 +39,7 @@ public class VolumeHandler
 	{
 		public int index;
 		public List<ReplicaArg> replicas;
+		public int primary_rep_index;
 	};
 
 	public class PrepareVolumeArg
