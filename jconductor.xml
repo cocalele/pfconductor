@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="jconductor" default="all">
+  
+  
+  <property file="jconductor.properties"/>
+  <!-- Uncomment the following property if no tests compilation is needed -->
+  <!-- 
+  <property name="skip.tests" value="true"/>
+   -->
+  
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="700m"/>
+  <patternset id="ignored.files">
+    <exclude name="**/*.hprof/**"/>
+    <exclude name="**/*.pyc/**"/>
+    <exclude name="**/*.pyo/**"/>
+    <exclude name="**/*.rbc/**"/>
+    <exclude name="**/*.yarb/**"/>
+    <exclude name="**/*~/**"/>
+    <exclude name="**/.DS_Store/**"/>
+    <exclude name="**/.git/**"/>
+    <exclude name="**/.hg/**"/>
+    <exclude name="**/.svn/**"/>
+    <exclude name="**/CVS/**"/>
+    <exclude name="**/__pycache__/**"/>
+    <exclude name="**/_svn/**"/>
+    <exclude name="**/vssver.scc/**"/>
+    <exclude name="**/vssver2.scc/**"/>
+  </patternset>
+  <patternset id="library.patterns">
+    <include name="*.war"/>
+    <include name="*.swc"/>
+    <include name="*.apk"/>
+    <include name="*.zip"/>
+    <include name="*.egg"/>
+    <include name="*.ear"/>
+    <include name="*.ane"/>
+    <include name="*.jar"/>
+    <include name="*.klib"/>
+  </patternset>
+  <patternset id="compiler.resources">
+    <exclude name="**/?*.java"/>
+    <exclude name="**/?*.form"/>
+    <exclude name="**/?*.class"/>
+    <exclude name="**/?*.groovy"/>
+    <exclude name="**/?*.scala"/>
+    <exclude name="**/?*.flex"/>
+    <exclude name="**/?*.kt"/>
+    <exclude name="**/?*.clj"/>
+    <exclude name="**/?*.aj"/>
+  </patternset>
+  
+  
+  <!-- Project Libraries -->
+  
+  <path id="library.commons-cli-1.3.1.classpath">
+    <pathelement location="${basedir}/lib/commons-cli-1.3.1.jar"/>
+  </path>
+  
+  <path id="library.commons-exec-1.3.classpath">
+    <pathelement location="${basedir}/lib/commons-exec-1.3.jar"/>
+  </path>
+  
+  <path id="library.commons-lang3-3.9.classpath">
+    <pathelement location="${basedir}/lib/commons-lang3-3.9.jar"/>
+  </path>
+  
+  <path id="library.gson-2.2.2.classpath">
+    <pathelement location="${basedir}/lib/gson-2.2.2.jar"/>
+  </path>
+  
+  <path id="library.hikaricp-3.4.1.classpath">
+    <pathelement location="${basedir}/lib/HikariCP-3.4.1.jar"/>
+  </path>
+  
+  <path id="library.ini4j-0.5.4.classpath">
+    <pathelement location="${basedir}/lib/ini4j-0.5.4.jar"/>
+  </path>
+  
+  <path id="library.javax.persistence.classpath">
+    <pathelement location="${basedir}/lib/javax.persistence.jar"/>
+  </path>
+  
+  <path id="library.jetty-client-9.2.16.v20160414.classpath">
+    <pathelement location="${basedir}/lib/jetty-client-9.2.16.v20160414.jar"/>
+  </path>
+  
+  <path id="library.jetty-http-9.2.16.v20160414.classpath">
+    <pathelement location="${basedir}/lib/jetty-http-9.2.16.v20160414.jar"/>
+  </path>
+  
+  <path id="library.jetty-io-9.2.16.v20160414.classpath">
+    <pathelement location="${basedir}/lib/jetty-io-9.2.16.v20160414.jar"/>
+  </path>
+  
+  <path id="library.jetty-server-9.2.16.v20160414.classpath">
+    <pathelement location="${basedir}/lib/jetty-server-9.2.16.v20160414.jar"/>
+  </path>
+  
+  <path id="library.jetty-util-9.2.16.v20160414.classpath">
+    <pathelement location="${basedir}/lib/jetty-util-9.2.16.v20160414.jar"/>
+  </path>
+  
+  <path id="library.mysql-connector-java-8.0.18.classpath">
+    <pathelement location="${basedir}/lib/mysql-connector-java-8.0.18.jar"/>
+  </path>
+  
+  <path id="library.norm-0.8.5.classpath">
+    <pathelement location="${basedir}/lib/norm-0.8.5.jar"/>
+  </path>
+  
+  <path id="library.servlet-api-3.1.classpath">
+    <pathelement location="${basedir}/lib/servlet-api-3.1.jar"/>
+  </path>
+  
+  <path id="library.slf4j-api-1.7.25.classpath">
+    <pathelement location="${basedir}/lib/slf4j-api-1.7.25.jar"/>
+  </path>
+  
+  <path id="library.slf4j-simple-1.7.25.classpath">
+    <pathelement location="${basedir}/lib/slf4j-simple-1.7.25.jar"/>
+  </path>
+  
+  <path id="library.zookeeper-3.5.6.classpath">
+    <pathelement location="${basedir}/lib/zookeeper-3.5.6.jar"/>
+  </path>
+  
+  <path id="library.zookeeper-jute-3.5.6.classpath">
+    <pathelement location="${basedir}/lib/zookeeper-jute-3.5.6.jar"/>
+  </path>
+  
+  <!-- Modules -->
+  
+  
+  <!-- Module jconductor -->
+  
+  <dirname property="module.jconductor.basedir" file="${ant.file}"/>
+  
+  
+  
+  <property name="compiler.args.jconductor" value="-encoding UTF-8 -source 8 -target 8 ${compiler.args}"/>
+  
+  <property name="jconductor.output.dir" value="${module.jconductor.basedir}/out/production/jconductor"/>
+  <property name="jconductor.testoutput.dir" value="${module.jconductor.basedir}/out/test/jconductor"/>
+  
+  <path id="jconductor.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="jconductor.module.production.classpath">
+    <path refid="library.zookeeper-3.5.6.classpath"/>
+    <path refid="library.slf4j-api-1.7.25.classpath"/>
+    <path refid="library.commons-cli-1.3.1.classpath"/>
+    <path refid="library.slf4j-simple-1.7.25.classpath"/>
+    <path refid="library.commons-exec-1.3.classpath"/>
+    <path refid="library.commons-lang3-3.9.classpath"/>
+    <path refid="library.jetty-server-9.2.16.v20160414.classpath"/>
+    <path refid="library.servlet-api-3.1.classpath"/>
+    <path refid="library.gson-2.2.2.classpath"/>
+    <path refid="library.hikaricp-3.4.1.classpath"/>
+    <path refid="library.javax.persistence.classpath"/>
+    <path refid="library.ini4j-0.5.4.classpath"/>
+    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
+    <path refid="library.zookeeper-jute-3.5.6.classpath"/>
+    <path refid="library.mysql-connector-java-8.0.18.classpath"/>
+    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
+    <path refid="library.norm-0.8.5.classpath"/>
+  </path>
+  
+  <path id="jconductor.runtime.production.module.classpath">
+    <pathelement location="${jconductor.output.dir}"/>
+    <path refid="library.zookeeper-3.5.6.classpath"/>
+    <path refid="library.slf4j-api-1.7.25.classpath"/>
+    <path refid="library.commons-cli-1.3.1.classpath"/>
+    <path refid="library.slf4j-simple-1.7.25.classpath"/>
+    <path refid="library.commons-exec-1.3.classpath"/>
+    <path refid="library.commons-lang3-3.9.classpath"/>
+    <path refid="library.jetty-server-9.2.16.v20160414.classpath"/>
+    <path refid="library.servlet-api-3.1.classpath"/>
+    <path refid="library.gson-2.2.2.classpath"/>
+    <path refid="library.hikaricp-3.4.1.classpath"/>
+    <path refid="library.javax.persistence.classpath"/>
+    <path refid="library.ini4j-0.5.4.classpath"/>
+    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
+    <path refid="library.zookeeper-jute-3.5.6.classpath"/>
+    <path refid="library.mysql-connector-java-8.0.18.classpath"/>
+    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
+    <path refid="library.norm-0.8.5.classpath"/>
+  </path>
+  
+  <path id="jconductor.module.classpath">
+    <pathelement location="${jconductor.output.dir}"/>
+    <path refid="library.zookeeper-3.5.6.classpath"/>
+    <path refid="library.slf4j-api-1.7.25.classpath"/>
+    <path refid="library.commons-cli-1.3.1.classpath"/>
+    <path refid="library.slf4j-simple-1.7.25.classpath"/>
+    <path refid="library.commons-exec-1.3.classpath"/>
+    <path refid="library.commons-lang3-3.9.classpath"/>
+    <path refid="library.jetty-server-9.2.16.v20160414.classpath"/>
+    <path refid="library.servlet-api-3.1.classpath"/>
+    <path refid="library.gson-2.2.2.classpath"/>
+    <path refid="library.hikaricp-3.4.1.classpath"/>
+    <path refid="library.javax.persistence.classpath"/>
+    <path refid="library.ini4j-0.5.4.classpath"/>
+    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
+    <path refid="library.zookeeper-jute-3.5.6.classpath"/>
+    <path refid="library.mysql-connector-java-8.0.18.classpath"/>
+    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
+    <path refid="library.norm-0.8.5.classpath"/>
+  </path>
+  
+  <path id="jconductor.runtime.module.classpath">
+    <pathelement location="${jconductor.testoutput.dir}"/>
+    <pathelement location="${jconductor.output.dir}"/>
+    <path refid="library.zookeeper-3.5.6.classpath"/>
+    <path refid="library.slf4j-api-1.7.25.classpath"/>
+    <path refid="library.commons-cli-1.3.1.classpath"/>
+    <path refid="library.slf4j-simple-1.7.25.classpath"/>
+    <path refid="library.commons-exec-1.3.classpath"/>
+    <path refid="library.commons-lang3-3.9.classpath"/>
+    <path refid="library.jetty-server-9.2.16.v20160414.classpath"/>
+    <path refid="library.servlet-api-3.1.classpath"/>
+    <path refid="library.gson-2.2.2.classpath"/>
+    <path refid="library.hikaricp-3.4.1.classpath"/>
+    <path refid="library.javax.persistence.classpath"/>
+    <path refid="library.ini4j-0.5.4.classpath"/>
+    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
+    <path refid="library.zookeeper-jute-3.5.6.classpath"/>
+    <path refid="library.mysql-connector-java-8.0.18.classpath"/>
+    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
+    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
+    <path refid="library.norm-0.8.5.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.jconductor">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.jconductor">
+    <patternset refid="excluded.from.module.jconductor"/>
+  </patternset>
+  
+  <path id="jconductor.module.sourcepath">
+    <dirset dir="${module.jconductor.basedir}">
+      <include name="src"/>
+      <include name="thirdpary/norm/src/main/java"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.jconductor" depends="compile.module.jconductor.production,compile.module.jconductor.tests" description="Compile module jconductor"/>
+  
+  <target name="compile.module.jconductor.production" description="Compile module jconductor; production classes">
+    <mkdir dir="${jconductor.output.dir}"/>
+    <javac destdir="${jconductor.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+      <compilerarg line="${compiler.args.jconductor}"/>
+      <bootclasspath refid="jconductor.module.bootclasspath"/>
+      <classpath refid="jconductor.module.production.classpath"/>
+      <src refid="jconductor.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.jconductor"/>
+    </javac>
+    
+    <copy todir="${jconductor.output.dir}">
+      <fileset dir="${module.jconductor.basedir}/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.jconductor.basedir}/thirdpary/norm/src/main/java">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.jconductor.tests" depends="compile.module.jconductor.production" description="compile module jconductor; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.jconductor" description="cleanup module">
+    <delete dir="${jconductor.output.dir}"/>
+    <delete dir="${jconductor.testoutput.dir}"/>
+  </target>
+  
+  <target name="init" description="Build initialization">
+    <!-- Perform any build initialization in this target -->
+  </target>
+  
+  <target name="clean" depends="clean.module.jconductor" description="cleanup all"/>
+  
+  <target name="build.modules" depends="init, clean, compile.module.jconductor" description="build all modules"/>
+  
+  <target name="all" depends="build.modules" description="build all"/>
+</project>
