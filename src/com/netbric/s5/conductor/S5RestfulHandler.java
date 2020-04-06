@@ -109,17 +109,17 @@ public class S5RestfulHandler extends AbstractHandler
 		RestfulReply reply;
 		try
 		{
-			if ("add_store_node".equals(op))
+			if ("add_store".equals(op))
 				reply = storenodeHandler.add_storenode(request, response);
-			else if ("delete_store_node".equals(op))
+			else if ("delete_store".equals(op))
 				reply = storenodeHandler.delete_storenode(request, response);
 			else if ("node_sanity_check".equals(op))
 				reply = storenodeHandler.sanity_check(request, response);
-			else if ("list_store_node".equals(op))
+			else if ("list_store".equals(op))
 				reply = storenodeHandler.list_storenode(request, response);
-			else if ("list_node_port".equals(op))
+			else if ("list_port".equals(op))
 				reply = storenodeHandler.list_nodeport(request, response);
-			else if ("list_tray".equals(op))
+			else if ("list_disk".equals(op))
 				reply = storenodeHandler.list_tray(request, response);
 			else if ("create_tenant".equals(op))
 				reply = tenantHandler.createTenant(request, response);

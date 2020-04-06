@@ -241,7 +241,7 @@ public class VolumeHandler
 
 			}
 
-			v.id = S5Database.getInstance().queryLongValue("select gen_volume_id() as val") << 24;
+			v.id = S5Database.getInstance().queryLongValue("select NEXTVAL(seq_gen)  as val") << 24;
 			v.rep_count = Utils.getParamAsInt(request, "replica", 1);
 			if(v.rep_count < 1 || v.rep_count >3)
 			{

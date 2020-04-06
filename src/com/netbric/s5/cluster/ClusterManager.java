@@ -25,8 +25,8 @@ public class ClusterManager
 	/**
 	 * register self as a conductor node
 	 * 
-	 * conductor½Úµã£¬ÔÚÆô¶¯ºó£¬ÔÚzookeeperµÄ/s5/conductors/Ä¿Â¼ÏÂ´´½¨EPHEMERAL_SEQUENTIALÀàĞÍµÄ½Úµã
-	 * ,½ÚµãµÄÃû×ÖÎª×Ô¼ºµÄ¹ÜÀíIP¡£
+	 * conductorèŠ‚ç‚¹ï¼Œåœ¨å¯åŠ¨åï¼Œåœ¨zookeeperçš„/s5/conductors/ç›®å½•ä¸‹åˆ›å»ºEPHEMERAL_SEQUENTIALç±»å‹çš„èŠ‚ç‚¹
+	 * ,èŠ‚ç‚¹çš„åå­—ä¸ºè‡ªå·±çš„ç®¡ç†IPã€‚
 	 */
 	static final Logger logger = LoggerFactory.getLogger(ClusterManager.class);
 	private static ZooKeeper zk;
@@ -108,7 +108,7 @@ public class ClusterManager
 	/**
 	 * register as a store node
 	 * 
-	 * ÔÚzookeeperµÄ/s5/stores/Ä¿Â¼ÏÂ´´½¨EPHEMERAL½Úµã£¬½ÚµãµÄÃû×ÖÎª×Ô¼ºµÄ¹ÜÀíIP¡£
+	 * åœ¨zookeeperçš„/s5/stores/ç›®å½•ä¸‹åˆ›å»ºEPHEMERALèŠ‚ç‚¹ï¼ŒèŠ‚ç‚¹çš„åå­—ä¸ºè‡ªå·±çš„ç®¡ç†IPã€‚
 	 * 
 	 * @param managmentIp
 	 */
@@ -176,6 +176,7 @@ public class ClusterManager
 	public static void updateStoresFromZk()
 	{
 		try {
+		  createZkNodeIfNotExist("/s5/stores", null);
 			List<String> nodes = zk.getChildren("/s5/stores", null);
 			for(String n : nodes)
 			{
