@@ -12,6 +12,8 @@ import org.apache.commons.cli.*;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
@@ -48,7 +50,7 @@ public class CliMain
 	{
 		if(str.length() == 1)
 			return Long.parseLong(str);
-		long l = Long.parseLong(str.substring(str.length() - 1));
+		long l = Long.parseLong(str.substring(0, str.length() - 1));
 		switch(str.charAt(str.length()-1)){
 			case 'k':
 			case 'K':
@@ -107,7 +109,7 @@ public class CliMain
 
 				org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 				client.start();
-				ContentResponse response = client.newRequest(String.format("http://%s:49180/api?op=create_volume&name=%s",
+				ContentResponse response = client.newRequest(String.format("http://%s:49180/s5c/?op=create_volume&name=%s",
 						leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size))
 						.method(org.eclipse.jetty.http.HttpMethod.GET)
 						.send();
@@ -150,7 +152,12 @@ public class CliMain
 			System.err.println("zookeeper ip not specified in config file");
 			System.exit(1);
 		}
-		ZooKeeper zk = new ZooKeeper(zkIp, 50000, null);
+		ZooKeeper zk = new ZooKeeper(zkIp, 50000, new Watcher(){
+			@Override
+			public void process(WatchedEvent event) {
+				logger.info("ZK event:{}", event.toString());
+			}
+		});
 		List<String> list = zk.getChildren("/s5/conductors", false);
 		if(list.size() == 0){
 			logger.error("No active conductor found on zk:{}", zkIp);
