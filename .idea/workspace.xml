@@ -2,105 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="bcf810b8-7f93-4d10-abbf-0b5b2949a31a" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitmodules" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.classpath" beforeDir="false" afterPath="$PROJECT_DIR$/.classpath" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/encodings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/encodings.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/HikariCP_3_4_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/HikariCP_3_4_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/commons_cli_1_3_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/commons_cli_1_3_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/commons_exec_1_3.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/commons_exec_1_3.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/commons_lang3_3_9.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/commons_lang3_3_9.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/gson_2_2_2.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/gson_2_2_2.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/ini4j_0_5_4.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/ini4j_0_5_4.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/javax_persistence.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/javax_persistence.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/jetty_http_9_2_16_v20160414.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/jetty_http_9_2_16_v20160414.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/jetty_io_9_2_16_v20160414.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/jetty_io_9_2_16_v20160414.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/jetty_server_9_2_16_v20160414.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/jetty_server_9_2_16_v20160414.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/jetty_util_9_2_16_v20160414.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/jetty_util_9_2_16_v20160414.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/lib.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/lib.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/mysql_connector_java_8_0_18.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/mysql_connector_java_8_0_18.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/norm_0_8_5.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/servlet_api_3_1.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/servlet_api_3_1.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/slf4j_api_1_7_25.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/slf4j_api_1_7_25.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/slf4j_simple_1_7_25.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/slf4j_simple_1_7_25.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/zookeeper_3_5_6.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/zookeeper_3_5_6.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries/zookeeper_jute_3_5_6.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/zookeeper_jute_3_5_6.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/markdown-navigator.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/markdown-navigator.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/rpc/CreateVolumeReply.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.project" beforeDir="false" afterPath="$PROJECT_DIR$/.project" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.settings/org.eclipse.jdt.core.prefs" beforeDir="false" afterPath="$PROJECT_DIR$/.settings/org.eclipse.jdt.core.prefs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.settings/org.eclipse.jdt.ui.prefs" beforeDir="false" afterPath="$PROJECT_DIR$/.settings/org.eclipse.jdt.ui.prefs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/LICENSE" beforeDir="false" afterPath="$PROJECT_DIR$/LICENSE" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/jconductor.iml" beforeDir="false" afterPath="$PROJECT_DIR$/jconductor.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/HikariCP-3.4.1-sources.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/HikariCP-3.4.1-sources.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/HikariCP-3.4.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/HikariCP-3.4.1.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/commons-cli-1.3.1-bin.zip" beforeDir="false" afterPath="$PROJECT_DIR$/lib/commons-cli-1.3.1-bin.zip" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/commons-cli-1.3.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/commons-cli-1.3.1.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/commons-exec-1.3.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/commons-exec-1.3.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/commons-lang3-3.9.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/commons-lang3-3.9.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/ext/.donotdelete" beforeDir="false" afterPath="$PROJECT_DIR$/lib/ext/.donotdelete" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/gson-2.2.2.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/gson-2.2.2.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/ini4j-0.5.4-bin.zip" beforeDir="false" afterPath="$PROJECT_DIR$/lib/ini4j-0.5.4-bin.zip" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/ini4j-0.5.4.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/ini4j-0.5.4.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/javax.persistence.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/javax.persistence.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-client-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-client-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-distribution-9.2.16.v20160414.zip" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-distribution-9.2.16.v20160414.zip" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-http-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-http-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-io-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-io-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-server-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-server-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-servlet-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-servlet-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-servlets-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-servlets-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/jetty-util-9.2.16.v20160414.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/jetty-util-9.2.16.v20160414.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/log4j-1.2.17.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/log4j-1.2.17.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/mysql-connector-java-8.0.18.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/mysql-connector-java-8.0.18.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/norm-0.8.5.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/norm-0.8.5.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/servlet-api-3.1.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/servlet-api-3.1.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/setuid/libsetuid-linux.so" beforeDir="false" afterPath="$PROJECT_DIR$/lib/setuid/libsetuid-linux.so" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/setuid/libsetuid-osx.so" beforeDir="false" afterPath="$PROJECT_DIR$/lib/setuid/libsetuid-osx.so" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/slf4j-api-1.7.25.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/slf4j-api-1.7.25.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/slf4j-simple-1.7.25.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/slf4j-simple-1.7.25.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/zookeeper-3.5.6.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/zookeeper-3.5.6.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/zookeeper-jute-3.5.6.jar" beforeDir="false" afterPath="$PROJECT_DIR$/lib/zookeeper-jute-3.5.6.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res/init_s5metadb.sql" beforeDir="false" afterPath="$PROJECT_DIR$/res/init_s5metadb.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res/plink.exe" beforeDir="false" afterPath="$PROJECT_DIR$/res/plink.exe" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/res/s5meta.db" beforeDir="false" afterPath="$PROJECT_DIR$/res/s5meta.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/s5-win.conf" beforeDir="false" afterPath="$PROJECT_DIR$/s5-win.conf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/s5.conf" beforeDir="false" afterPath="$PROJECT_DIR$/s5.conf" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/simplelogger.properties" beforeDir="false" afterPath="$PROJECT_DIR$/simplelogger.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/cluster/ClusterManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/cluster/ClusterManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/Config.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/Config.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/ConfigException.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/ConfigException.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/InvalidParamException.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/InvalidParamException.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/LocalExec.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/LocalExec.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/MetaVolume.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/MetaVolume.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/MountTarget.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/MountTarget.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/NbdxServer.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/NbdxServer.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/OperateException.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/OperateException.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/RestfulReply.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/RestfulReply.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/RetCode.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/RetCode.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/S5RestfulHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/S5RestfulHandler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/SshExec.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/SshExec.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/StgtTargetConf.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/StgtTargetConf.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/Utils.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/Utils.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/StoreHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/StoreHandler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/TenantHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/TenantHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jconductor.properties" beforeDir="false" afterPath="$PROJECT_DIR$/jconductor.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jconductor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/jconductor.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/cli/CliMain.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/cli/CliMain.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Port.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Port.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Replica.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Replica.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/S5Database.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/S5Database.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Shard.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Shard.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Status.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Status.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/StoreNode.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/StoreNode.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Tenant.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Tenant.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Tray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Tray.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/orm/Volume.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/orm/Volume.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/thirdpary/norm" beforeDir="false" afterPath="$PROJECT_DIR$/thirdpary/norm" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -161,14 +69,14 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Kotlin File" />
-        <option value="Class" />
         <option value="package-info" />
+        <option value="Class" />
       </list>
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="ROOT_SYNC" value="DONT_SYNC" />
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="ROOT_SYNC" value="DONT_SYNC" />
   </component>
   <component name="GithubPullRequestsUISettings">
     <option name="hiddenUrls">
@@ -209,18 +117,21 @@
   <component name="PropertiesComponent">
     <property name="ChangesTree.GroupingKeys" value="directory" />
     <property name="DatabaseDriversLRU" value="mariadb" />
-    <property name="GenerateAntBuildDialog.backupFiles" value="true" />
     <property name="GenerateAntBuildDialog.enableUiFormCompile" value="true" />
     <property name="GenerateAntBuildDialog.forceTargetJdk" value="true" />
+    <property name="GenerateAntBuildDialog.generateSingleFile" value="true" />
     <property name="GenerateAntBuildDialog.outputFileNameProperty" value="jconductor" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="aspect.path.notification.shown" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/lib/norm-0.8.5.zip!/" />
+    <property name="extract.method.default.visibility" value="private" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../java-ascii-table/build.gradle" />
     <property name="project.structure.last.edited" value="Libraries" />
     <property name="project.structure.proportion" value="0.15" />
     <property name="project.structure.side.proportion" value="0.2789272" />
-    <property name="settings.editor.selected.configurable" value="configurable.group.tools" />
+    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
+    <property name="settings.editor.splitter.proportion" value="0.11624551" />
   </component>
   <component name="RunManager">
     <configuration default="true" type="Applet" factoryName="Applet">
@@ -276,9 +187,6 @@
       <option name="VM_PARAMETERS" value="-ea" />
       <option name="PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="$MODULE_DIR$" />
-    </configuration>
-    <configuration name="&lt;template&gt;" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" default="true" selected="false">
-      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
     </configuration>
     <configuration default="true" type="executeSpecs" factoryName="Gauge Execution">
       <setting name="environment" value="" />
@@ -361,6 +269,15 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType">
+      <module name="" />
+      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
+      <option name="PROGRAM_PARAMETERS" />
+      <predefined_log_file enabled="true" id="idea.log" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
   </component>
   <component name="ServiceViewManager">
     <option name="viewStates">
@@ -410,10 +327,11 @@
     </option>
   </component>
   <component name="WindowStateProjectService">
-    <state x="151" y="94" key="#Project_Structure" timestamp="1579766448926">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="237" y="146" key="#Project_Structure" timestamp="1586276313318">
+      <screen x="0" y="0" width="2256" height="1440" />
     </state>
     <state x="151" y="94" key="#Project_Structure/0.0.1440.929@0.0.1440.929" timestamp="1579766448926" />
+    <state x="237" y="146" key="#Project_Structure/0.0.2256.1440@0.0.2256.1440" timestamp="1586276313318" />
     <state x="551" y="320" key="#com.intellij.debugger.actions.ViewTextAction" timestamp="1579105797107">
       <screen x="0" y="0" width="1440" height="929" />
     </state>
@@ -422,18 +340,10 @@
       <screen x="0" y="0" width="1440" height="929" />
     </state>
     <state x="176" y="120" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1440.929@0.0.1440.929" timestamp="1579103666581" />
-    <state x="526" y="184" key="#com.intellij.ide.util.MemberChooser" timestamp="1577716148183">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="846" y="289" key="#com.intellij.ide.util.MemberChooser" timestamp="1586357423240">
+      <screen x="0" y="0" width="2256" height="1440" />
     </state>
-    <state x="526" y="184" key="#com.intellij.ide.util.MemberChooser/0.0.1440.929@0.0.1440.929" timestamp="1577716148183" />
-    <state x="572" y="354" key="#com.intellij.ide.util.projectWizard.JdkChooserPanel.MyDialog" timestamp="1576853525506">
-      <screen x="0" y="0" width="1440" height="929" />
-    </state>
-    <state x="572" y="354" key="#com.intellij.ide.util.projectWizard.JdkChooserPanel.MyDialog/0.0.1440.929@0.0.1440.929" timestamp="1576853525506" />
-    <state x="406" y="0" key="#com.intellij.refactoring.rename.AutomaticRenamingDialog" timestamp="1577029237563">
-      <screen x="0" y="0" width="1440" height="929" />
-    </state>
-    <state x="406" y="0" key="#com.intellij.refactoring.rename.AutomaticRenamingDialog/0.0.1440.929@0.0.1440.929" timestamp="1577029237563" />
+    <state x="846" y="289" key="#com.intellij.ide.util.MemberChooser/0.0.2256.1440@0.0.2256.1440" timestamp="1586357423240" />
     <state x="266" y="220" key="#org.jetbrains.debugger.memory.view.InstancesWindow" timestamp="1579105787734">
       <screen x="0" y="0" width="1440" height="929" />
     </state>
@@ -442,26 +352,15 @@
       <screen x="0" y="0" width="1440" height="929" />
     </state>
     <state x="197" y="190" width="711" height="595" key="#xdebugger.evaluate/0.0.1440.929@0.0.1440.929" timestamp="1579768443358" />
-    <state x="209" y="64" width="1089" height="812" key="CommitChangelistDialog2" timestamp="1577113146437">
-      <screen x="0" y="0" width="1440" height="929" />
-    </state>
-    <state x="209" y="64" width="1089" height="812" key="CommitChangelistDialog2/0.0.1440.929@0.0.1440.929" timestamp="1577113146437" />
     <state width="433" height="466" key="DebuggerActiveHint" timestamp="1579708726418">
       <screen x="0" y="0" width="1440" height="929" />
     </state>
     <state width="433" height="466" key="DebuggerActiveHint/0.0.1440.929@0.0.1440.929" timestamp="1579708726418" />
-    <state x="475" y="180" key="DetectedRootsChooserDialog" timestamp="1577023980190">
-      <screen x="0" y="0" width="1440" height="929" />
-    </state>
-    <state x="475" y="180" key="DetectedRootsChooserDialog/0.0.1440.929@0.0.1440.929" timestamp="1577023980190" />
-    <state x="93" y="93" width="1255" height="744" key="DiffContextDialog" timestamp="1576858879478">
-      <screen x="0" y="0" width="1440" height="929" />
-    </state>
-    <state x="93" y="93" width="1255" height="744" key="DiffContextDialog/0.0.1440.929@0.0.1440.929" timestamp="1576858879478" />
-    <state x="500" y="206" key="FileChooserDialogImpl" timestamp="1577979073969">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="783" y="319" key="FileChooserDialogImpl" timestamp="1586275614024">
+      <screen x="0" y="0" width="2256" height="1440" />
     </state>
     <state x="500" y="206" key="FileChooserDialogImpl/0.0.1440.929@0.0.1440.929" timestamp="1577979073969" />
+    <state x="783" y="319" key="FileChooserDialogImpl/0.0.2256.1440@0.0.2256.1440" timestamp="1586275614024" />
     <state width="1397" height="231" key="GridCell.Tab.0.bottom" timestamp="1579768506876">
       <screen x="0" y="0" width="1440" height="929" />
     </state>
@@ -494,30 +393,32 @@
       <screen x="0" y="0" width="1440" height="929" />
     </state>
     <state width="1397" height="231" key="GridCell.Tab.1.right/0.0.1440.929@0.0.1440.929" timestamp="1579768163667" />
-    <state x="231" y="176" key="SettingsEditor" timestamp="1577978410191">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="362" y="273" key="SettingsEditor" timestamp="1586359358627">
+      <screen x="0" y="0" width="2256" height="1440" />
     </state>
     <state x="231" y="176" key="SettingsEditor/0.0.1440.929@0.0.1440.929" timestamp="1577978410191" />
-    <state x="409" y="289" key="com.intellij.ide.util.TipDialog" timestamp="1580139624452">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="362" y="273" key="SettingsEditor/0.0.2256.1440@0.0.2256.1440" timestamp="1586359358627" />
+    <state x="641" y="448" key="com.intellij.ide.util.TipDialog" timestamp="1586356813346">
+      <screen x="0" y="0" width="2256" height="1440" />
     </state>
     <state x="409" y="289" key="com.intellij.ide.util.TipDialog/0.0.1440.929@0.0.1440.929" timestamp="1580139624452" />
-    <state x="377" y="213" key="run.anything.popup" timestamp="1577675472134">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="641" y="448" key="com.intellij.ide.util.TipDialog/0.0.2256.1440@0.0.2256.1440" timestamp="1586356813346" />
+    <state x="734" y="356" key="extract.method.dialog" timestamp="1586175561787">
+      <screen x="0" y="0" width="2256" height="1440" />
     </state>
-    <state x="377" y="213" key="run.anything.popup/0.0.1440.929@0.0.1440.929" timestamp="1577675472134" />
+    <state x="734" y="356" key="extract.method.dialog/0.0.2256.1440@0.0.2256.1440" timestamp="1586175561787" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java</url>
-          <line>704</line>
+          <line>702</line>
           <option name="timeStamp" value="13" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java</url>
-          <line>676</line>
+          <line>674</line>
           <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">

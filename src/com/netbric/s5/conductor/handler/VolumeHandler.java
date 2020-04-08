@@ -5,6 +5,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.conductor.*;
+import com.netbric.s5.conductor.rpc.CreateVolumeReply;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -297,10 +298,7 @@ public class VolumeHandler
 			trans.rollback();;
 			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
 		}
-
-
-
-		return new RestfulReply(op);
+		return new CreateVolumeReply(op, v);
 	}
 
 	private void select_store(Transaction trans, int replica_count, long volume_size, String[] store_names,
@@ -634,7 +632,7 @@ public class VolumeHandler
 		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 		try {
 			client.start();
-			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=prepare_volume&name=?",
+			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=prepare_volume&name=%s",
 					s.mngtIp, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
 					.method(org.eclipse.jetty.http.HttpMethod.POST)
 					.content(new org.eclipse.jetty.client.util.StringContentProvider(jsonStr), "application/json")

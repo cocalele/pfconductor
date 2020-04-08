@@ -54,6 +54,35 @@
     <exclude name="**/?*.aj"/>
   </patternset>
   
+  <!-- JDK definitions -->
+  
+  <property name="jdk.bin.1.8" value="${jdk.home.1.8}/bin"/>
+  <path id="jdk.classpath.1.8">
+    <fileset dir="${jdk.home.1.8}">
+      <include name="jre/lib/charsets.jar"/>
+      <include name="jre/lib/ext/cldrdata.jar"/>
+      <include name="jre/lib/ext/dnsns.jar"/>
+      <include name="jre/lib/ext/icedtea-sound.jar"/>
+      <include name="jre/lib/ext/jaccess.jar"/>
+      <include name="jre/lib/ext/java-atk-wrapper.jar"/>
+      <include name="jre/lib/ext/localedata.jar"/>
+      <include name="jre/lib/ext/nashorn.jar"/>
+      <include name="jre/lib/ext/sunec.jar"/>
+      <include name="jre/lib/ext/sunjce_provider.jar"/>
+      <include name="jre/lib/ext/sunpkcs11.jar"/>
+      <include name="jre/lib/ext/zipfs.jar"/>
+      <include name="jre/lib/jce.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/management-agent.jar"/>
+      <include name="jre/lib/resources.jar"/>
+      <include name="jre/lib/rt.jar"/>
+    </fileset>
+  </path>
+  
+  <property name="project.jdk.home" value="${jdk.home.1.8}"/>
+  <property name="project.jdk.bin" value="${jdk.bin.1.8}"/>
+  <property name="project.jdk.classpath" value="jdk.classpath.1.8"/>
+  
   
   <!-- Project Libraries -->
   
@@ -79,6 +108,10 @@
   
   <path id="library.ini4j-0.5.4.classpath">
     <pathelement location="${basedir}/lib/ini4j-0.5.4.jar"/>
+  </path>
+  
+  <path id="library.java-ascii-table.classpath">
+    <pathelement location="${basedir}/lib/java-ascii-table.jar"/>
   </path>
   
   <path id="library.javax.persistence.classpath">
@@ -132,6 +165,20 @@
   <path id="library.zookeeper-jute-3.5.6.classpath">
     <pathelement location="${basedir}/lib/zookeeper-jute-3.5.6.jar"/>
   </path>
+  <!-- Register Custom Compiler Taskdefs -->
+  <property name="javac2.home" value="${idea.home}/lib"/>
+  <path id="javac2.classpath">
+    <fileset dir="${javac2.home}">
+      <include name="javac2.jar"/>
+      <include name="jdom.jar"/>
+      <include name="asm-all*.jar"/>
+      <include name="forms-*.jar"/>
+    </fileset>
+  </path>
+  <target name="register.custom.compilers">
+    <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.classpath"/>
+    <taskdef name="instrumentIdeaExtensions" classname="com.intellij.ant.InstrumentIdeaExtensions" classpathref="javac2.classpath"/>
+  </target>
   
   <!-- Modules -->
   
@@ -141,6 +188,9 @@
   <dirname property="module.jconductor.basedir" file="${ant.file}"/>
   
   
+  <property name="module.jdk.home.jconductor" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.jconductor" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.jconductor" value="${project.jdk.classpath}"/>
   
   <property name="compiler.args.jconductor" value="-encoding UTF-8 -source 8 -target 8 ${compiler.args}"/>
   
@@ -152,6 +202,7 @@
   </path>
   
   <path id="jconductor.module.production.classpath">
+    <path refid="${module.jdk.classpath.jconductor}"/>
     <path refid="library.zookeeper-3.5.6.classpath"/>
     <path refid="library.slf4j-api-1.7.25.classpath"/>
     <path refid="library.commons-cli-1.3.1.classpath"/>
@@ -171,6 +222,7 @@
     <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
     <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
+    <path refid="library.java-ascii-table.classpath"/>
   </path>
   
   <path id="jconductor.runtime.production.module.classpath">
@@ -194,9 +246,11 @@
     <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
     <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
+    <path refid="library.java-ascii-table.classpath"/>
   </path>
   
   <path id="jconductor.module.classpath">
+    <path refid="${module.jdk.classpath.jconductor}"/>
     <pathelement location="${jconductor.output.dir}"/>
     <path refid="library.zookeeper-3.5.6.classpath"/>
     <path refid="library.slf4j-api-1.7.25.classpath"/>
@@ -217,6 +271,7 @@
     <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
     <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
+    <path refid="library.java-ascii-table.classpath"/>
   </path>
   
   <path id="jconductor.runtime.module.classpath">
@@ -241,6 +296,7 @@
     <path refid="library.jetty-io-9.2.16.v20160414.classpath"/>
     <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
+    <path refid="library.java-ascii-table.classpath"/>
   </path>
   
   
@@ -262,15 +318,15 @@
   
   <target name="compile.module.jconductor" depends="compile.module.jconductor.production,compile.module.jconductor.tests" description="Compile module jconductor"/>
   
-  <target name="compile.module.jconductor.production" description="Compile module jconductor; production classes">
+  <target name="compile.module.jconductor.production" depends="register.custom.compilers" description="Compile module jconductor; production classes">
     <mkdir dir="${jconductor.output.dir}"/>
-    <javac destdir="${jconductor.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true">
+    <javac2 destdir="${jconductor.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.jconductor}/javac">
       <compilerarg line="${compiler.args.jconductor}"/>
       <bootclasspath refid="jconductor.module.bootclasspath"/>
       <classpath refid="jconductor.module.production.classpath"/>
       <src refid="jconductor.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.jconductor"/>
-    </javac>
+    </javac2>
     
     <copy todir="${jconductor.output.dir}">
       <fileset dir="${module.jconductor.basedir}/src">
@@ -284,7 +340,7 @@
     </copy>
   </target>
   
-  <target name="compile.module.jconductor.tests" depends="compile.module.jconductor.production" description="compile module jconductor; test classes" unless="skip.tests"/>
+  <target name="compile.module.jconductor.tests" depends="register.custom.compilers,compile.module.jconductor.production" description="compile module jconductor; test classes" unless="skip.tests"/>
   
   <target name="clean.module.jconductor" description="cleanup module">
     <delete dir="${jconductor.output.dir}"/>

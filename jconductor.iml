@@ -27,5 +27,8 @@
     <orderEntry type="library" name="jetty-io-9.2.16.v20160414" level="project" />
     <orderEntry type="library" name="commons-collections4-4.4" level="project" />
     <orderEntry type="library" name="jetty-client-9.2.16.v20160414" level="project" />
+    <orderEntry type="library" name="norm-0.8.5" level="project" />
+    <orderEntry type="library" name="jetty-client-9.2.16.v20160414" level="project" />
+    <orderEntry type="library" name="java-ascii-table" level="project" />
   </component>
 </module>
