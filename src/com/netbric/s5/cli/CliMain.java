@@ -124,7 +124,7 @@ public class CliMain
 				if(r.retCode == RetCode.OK)
 					logger.info("Succeed create_volume:{}", volumeName);
 				else
-					throw new IOException(String.format("Failed to create_volume:{} , code:%d, reason:{}", volumeName, r.retCode, r.reason));
+					throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
 				String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
 
 				String[][] data = {

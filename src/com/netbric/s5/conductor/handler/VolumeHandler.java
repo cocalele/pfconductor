@@ -84,7 +84,7 @@ public class VolumeHandler
 		MountTarget[] targets;
 	}
 
-	static final Logger logger = LoggerFactory.getLogger(S5RestfulHandler.class);
+	static final Logger logger = LoggerFactory.getLogger(VolumeHandler.class);
 
 	public RestfulReply expose_volume(HttpServletRequest request, HttpServletResponse response)
 	{

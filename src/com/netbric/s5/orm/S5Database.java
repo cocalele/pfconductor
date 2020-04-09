@@ -17,6 +17,8 @@ import org.apache.commons.lang3.SystemUtils;
 import com.dieselpoint.norm.Database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class S5Database extends Database
 {
@@ -25,6 +27,7 @@ public class S5Database extends Database
 
 	// MySQL 8.0 以上版本 - JDBC 驱动名及数据库 URL
 	static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+	static final Logger logger = LoggerFactory.getLogger(S5Database.class);
 	static
 	{
 		try
@@ -100,6 +103,7 @@ public class S5Database extends Database
 				return ((BigInteger)value).longValue();
 			if(value instanceof Integer)
 				return ((Integer)value).longValue();
+			logger.error("Unexpected type from DB:{}", value.getClass().getName());
 		}
 		throw new SQLException(String.format("No valid result returned for sql:%s %s", sql, args));
 
