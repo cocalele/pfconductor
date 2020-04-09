@@ -103,6 +103,8 @@ public class S5Database extends Database
 				return ((BigInteger)value).longValue();
 			if(value instanceof Integer)
 				return ((Integer)value).longValue();
+			if(value instanceof Long)
+				return ((Long)value).longValue();
 			logger.error("Unexpected type from DB:{}", value.getClass().getName());
 		}
 		throw new SQLException(String.format("No valid result returned for sql:%s %s", sql, args));
