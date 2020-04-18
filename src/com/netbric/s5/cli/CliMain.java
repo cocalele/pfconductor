@@ -109,8 +109,10 @@ public class CliMain
 
 				org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 				client.start();
-				ContentResponse response = client.newRequest(String.format("http://%s:49180/s5c/?op=create_volume&name=%s",
-						leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size))
+				String url = String.format("http://%s:49180/s5c/?op=create_volume&name=%s&size=%d",
+						leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size);
+				logger.info("Send request:{}", url);
+				ContentResponse response = client.newRequest(url)
 						.method(org.eclipse.jetty.http.HttpMethod.GET)
 						.send();
 				logger.info("Get response:{}", response.getContentAsString());

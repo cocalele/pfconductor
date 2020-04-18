@@ -234,18 +234,21 @@ public class ClusterManager
 	public static void updateStorePorts(int  store_id)
 	{
 		try {
-			List<String> ports = zk.getChildren("/s5/stores/"+store_id+"/ports", null);
-			for(String ip : ports)
-			{
-				String purpose = new String(zk.getData("/s5/stores/"+store_id+"/ports/"+ip+"/purpose", false, null));
-				Port p = new Port();
-				p.ip_addr = ip;
-				p.store_id = store_id;
-				p.name = ip;
-				p.purpose = Integer.parseInt(purpose);
-				p.status = Status.OK;
+			for(int i=0;i<2;i++) {
+				String path = String.format("/s5/stores/%d/%s", store_id, i==0 ?"ports":"rep_ports");	
+				List<String> ports = zk.getChildren(path, null);
+				for(String ip : ports)
+				{
+					Port p = new Port();
+					p.ip_addr = ip;
+					p.store_id = store_id;
+					p.name = ip;
+					p.purpose = i;
+					p.status = Status.OK;
 
-				S5Database.getInstance().upsert(p);
+					S5Database.getInstance().upsert(p);
+					logger.info("upsert port:{}, purpose:{}", p.ip_addr, p.purpose);
+				}
 			}
 		} catch (KeeperException | InterruptedException e) {
 			logger.error("Failed update tray from zk",e);

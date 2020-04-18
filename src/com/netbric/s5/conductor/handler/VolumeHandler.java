@@ -35,12 +35,14 @@ public class VolumeHandler
 		public int index;
 		public int store_id;
 		public String tray_uuid;
+		public String status;
 	};
 	class ShardArg
 	{
 		public int index;
 		public List<ReplicaArg> replicas;
 		public int primary_rep_index;
+		public String status;
 	};
 
 	public class PrepareVolumeArg
@@ -52,6 +54,8 @@ public class VolumeHandler
 		public long volume_id;
 		public int shard_count;
 		public int rep_count;
+		public int meta_ver;
+		public int snap_seq;
 		public List<ShardArg> shards;
 	}
 
@@ -68,6 +72,8 @@ public class VolumeHandler
 		public long volume_id;
 		public int shard_count;
 		public int rep_count;
+		public int meta_ver;
+		public int snap_seq;
 		public ShardInfoForClient[] shards;
 
 		public OpenVolumeReply(String op, int retCode, String reason) {
@@ -112,7 +118,7 @@ public class VolumeHandler
 		if (!vol.status.equals(Status.OK))
 			return new RestfulReply(op, RetCode.INVALID_STATE,
 					"Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be exposed");
-		if (vol.exposed)
+		if (vol.exposed != 0)
 			return new RestfulReply(op, RetCode.ALREADY_DONE,
 					"Volume:" + tenant_name + ":" + volume_name + " has already been exposed");
 
@@ -392,8 +398,8 @@ public class VolumeHandler
 					.results(HashMap.class);
 
 			if (list.size() < replica_count)
-				throw new InvalidParamException("only" + list.size()
-						+ "stores has tray with capacity over" + volume_size + "but replica is" + replica_count);
+				throw new InvalidParamException("only " + list.size()
+						+ " stores has tray with capacity over " + volume_size + "(byte) but replica is " + replica_count);
 
 			// now choose tray for replica^M
 
@@ -603,12 +609,14 @@ public class VolumeHandler
 		arg.volume_id =vol.id;
 		arg.shard_count = 1;//TODO: not support shard yet
 		arg.rep_count=vol.rep_count;
-
+		arg.meta_ver = vol.meta_ver;
+		arg.snap_seq = vol.snap_seq;
 		arg.shards = new ArrayList<>(arg.shard_count);
 		for(int i=0;i<arg.shard_count;i++)
 		{
 			ShardArg shard = new ShardArg();
 			shard.index=i;
+			shard.status = "OK";
 			shard.replicas = new ArrayList<>(arg.rep_count);
 			for(int repIdx = 0; repIdx<arg.rep_count;repIdx ++)
 			{
@@ -616,6 +624,7 @@ public class VolumeHandler
 				rep.index = repIdx;
 				rep.tray_uuid = reps.get(repIdx).tray_uuid;
 				rep.store_id = reps.get(repIdx).store_id;
+				rep.status = reps.get(repIdx).status;
 				shard.replicas.add(rep);
 			}
 			arg.shards.add(shard);
@@ -686,7 +695,7 @@ public class VolumeHandler
 				portMap.put(p.store_id, ips);
 			}
 		}
-
+		logger.info("{} ports found ", portMap.size());
 
 		List<TempShard> rawShards = S5Database.getInstance().sql("select store_id, is_primary, shard_index from v_replica_ext as r\n" +
 				" where  volume_id=? and r.status='OK' order by shard_index, is_primary desc, status_time asc, replica_index asc", volumeId).results(TempShard.class);
@@ -718,6 +727,8 @@ public class VolumeHandler
 		reply.rep_count=v.rep_count;
 		reply.volume_size=v.size;
 		reply.status = v.status;
+		reply.meta_ver = v.meta_ver;
+		reply.snap_seq = v.snap_seq;
 		reply.shards = new ShardInfoForClient[shards.values().size()];
 		shards.values().toArray(reply.shards);
 		return reply;

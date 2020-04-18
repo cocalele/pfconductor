@@ -93,8 +93,10 @@ create table t_volume(
 	tenant_id integer not null, 
 	quotaset_id integer, 
 	status varchar(16), 
+	meta_ver integer default 0,
 	exposed integer default 0,
-	rep_count integer, 
+	rep_count integer default 1,
+	snap_seq integer default 0,
 	shard_size bigint default (64<<30),
 	status_time datetime not null default current_timestamp on update current_timestamp,
 	foreign key (tenant_id) references t_tenant(id)
@@ -117,10 +119,11 @@ create table if not exists t_shard (
 
 
 create table t_port(
-	ip_addr varchar(16) primary key,
+	ip_addr varchar(16) ,
 	store_id int,
 	purpose int, -- normal/replicating access 
-	status varchar(16) not null
+	status varchar(16) not null,
+	primary key(ip_addr, purpose)
 	);
 
 create table t_tray(

@@ -18,10 +18,11 @@ public class Volume
 	public int tenant_id;
 	public int quotaset_id;
 	public String status;
-	public boolean exposed;
+	public int exposed; //1 means exposed, 0 means not
 	public int rep_count; //replica count, 1, 2, 3
 	public long shard_size; //shard size, default 64G
-
+	public int meta_ver;
+	public int snap_seq;
 	public Volume()
 	{
 	};
