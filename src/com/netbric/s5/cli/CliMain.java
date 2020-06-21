@@ -3,10 +3,7 @@ import com.bethecoder.ascii_table.ASCIITable;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.netbric.s5.conductor.Config;
-import com.netbric.s5.conductor.ConfigException;
-import com.netbric.s5.conductor.RestfulReply;
-import com.netbric.s5.conductor.RetCode;
+import com.netbric.s5.conductor.*;
 import com.netbric.s5.conductor.rpc.CreateVolumeReply;
 import org.apache.commons.cli.*;
 
@@ -29,13 +26,17 @@ public class CliMain
 {
 
 	static final Logger logger = LoggerFactory.getLogger(CliMain.class);
-	static String[] validCmds = {"get_leader_conductor", "create_volume", "list_volume" };
+	static String[][] validCmds = {
+			{"get_pfc", "Get the active conductor IP"},
+			{"create_volume", " -v <vol_namej> -s <size>\ncreate a volume,"},
+			{"list_volume", "list volumes"}
+	};
 	private static void printUsage()
 	{
 		System.out.println("Usage: pfcli <command> [options]");
 		System.out.println("Valid command can be:");
-		for(String cmd : validCmds)
-			System.out.printf("       %s", cmd);
+		for(String[] cmd : validCmds)
+			System.out.printf("       %s %s", cmd[0], cmd[1]);
 
 	}
 
@@ -80,62 +81,78 @@ public class CliMain
 
 		try
 		{
-			if(args[0].equals("help") || args[0].equals("-h")  || args[0].equals("--help") ) {
-				printUsage();
-				System.exit(1);
-			}
-
-			if(args[0].equals("get_leader_conductor")) {
-				args = ArrayUtils.remove(args, 0);
-				cmd = cp.parse(options, args);
-				String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
-				Config cfg = new Config(cfgPath);
-				String leader = getLeaderIp(cfg);
-				System.out.println(leader);
-			}
-			else if(args[0].equals("create_volume")) {
-				options.addOption(buildOption("v", "name", true, true, "Volume name to create"));
-				options.addOption(buildOption("s", "size", true, true, "Volume size"));
-				args = ArrayUtils.remove(args, 0);
-				cmd = cp.parse(options, args);
-				String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
-				String volumeName = cmd.getOptionValue('v');
-				long size = parseNumber(cmd.getOptionValue('s'));
-				Config cfg = new Config(cfgPath);
-				String leader = getLeaderIp(cfg);
-				GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-				Gson gson = builder.create();
-
-
-				org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-				client.start();
-				String url = String.format("http://%s:49180/s5c/?op=create_volume&name=%s&size=%d",
-						leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size);
-				logger.info("Send request:{}", url);
-				ContentResponse response = client.newRequest(url)
-						.method(org.eclipse.jetty.http.HttpMethod.GET)
-						.send();
-				logger.info("Get response:{}", response.getContentAsString());
-				if(response.getStatus() < 200 || response.getStatus() >= 300)
+			switch(args[0])
+			{
+				case "help":
+				case "-h":
+				case "--help":
 				{
-					throw new IOException(String.format("Failed to create_volume:%s, HTTP status:%d, reason:%s",
-							volumeName, response.getStatus(), response.getReason()));
+					printUsage();
+					System.exit(1);
 				}
-				CreateVolumeReply r = gson.fromJson(new String(response.getContent()), CreateVolumeReply.class);
-				client.stop();
-				if(r.retCode == RetCode.OK)
-					logger.info("Succeed create_volume:{}", volumeName);
-				else
-					throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
-				String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
+				case "get_leader_conductor":
+				{
+					args = ArrayUtils.remove(args, 0);
+					cmd = cp.parse(options, args);
+					String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
+					Config cfg = new Config(cfgPath);
+					String leader = getLeaderIp(cfg);
+					System.out.println(leader);
+					break;
+				}
+				case "create_volume":
+				{
+					options.addOption(buildOption("v", "name", true, true, "Volume name to create"));
+					options.addOption(buildOption("s", "size", true, true, "Volume size"));
+					args = ArrayUtils.remove(args, 0);
+					cmd = cp.parse(options, args);
+					String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
+					String volumeName = cmd.getOptionValue('v');
+					long size = parseNumber(cmd.getOptionValue('s'));
+					Config cfg = new Config(cfgPath);
+					String leader = getLeaderIp(cfg);
+					GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+					Gson gson = builder.create();
 
-				String[][] data = {
-						{ Long.toString(r.id), r.name, Long.toString(r.size), Integer.toString(r.rep_count), r.status },
 
-				};
-				ASCIITable.getInstance().printTable(header, data);
+					org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
+					client.start();
+					String url = String.format("http://%s:49180/s5c/?op=create_volume&name=%s&size=%d",
+							leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size);
+					logger.info("Send request:{}", url);
+					ContentResponse response = client.newRequest(url)
+							.method(org.eclipse.jetty.http.HttpMethod.GET)
+							.send();
+					logger.info("Get response:{}", response.getContentAsString());
+					if(response.getStatus() < 200 || response.getStatus() >= 300)
+					{
+						throw new IOException(String.format("Failed to create_volume:%s, HTTP status:%d, reason:%s",
+								volumeName, response.getStatus(), response.getReason()));
+					}
+					CreateVolumeReply r = gson.fromJson(new String(response.getContent()), CreateVolumeReply.class);
+					client.stop();
+					if(r.retCode == RetCode.OK)
+						logger.info("Succeed create_volume:{}", volumeName);
+					else
+						throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
+					String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
 
-				return;
+					String[][] data = {
+							{ Long.toString(r.id), r.name, Long.toString(r.size), Integer.toString(r.rep_count), r.status },
+
+					};
+					ASCIITable.getInstance().printTable(header, data);
+
+					return;
+				}
+				case "list_volume":
+					cmd_list_volume(args, options);
+					break;
+				default:
+				{
+					logger.error("Invalid command:{}", args[0]);
+					return;
+				}
 			}
 		}
 		catch (Exception e1)
@@ -147,6 +164,45 @@ public class CliMain
 
     }
 
+    static void cmd_list_volume(String[] args, Options options) throws Exception {
+		CommandLineParser cp = new DefaultParser();
+		CommandLine cmd;
+		cmd = cp.parse(options, args);
+		String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
+		Config cfg = new Config(cfgPath);
+		String leader = getLeaderIp(cfg);
+		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+		Gson gson = builder.create();
+
+		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
+		client.start();
+		String url = String.format("http://%s:49180/s5c/?op=list_volume", leader);
+		logger.info("Send request:{}", url);
+		ContentResponse response = client.newRequest(url)
+				.method(org.eclipse.jetty.http.HttpMethod.GET)
+				.send();
+		logger.info("Get response:{}", response.getContentAsString());
+		if(response.getStatus() < 200 || response.getStatus() >= 300)
+		{
+			throw new IOException(String.format("Failed to list_volume, HTTP status:%d, reason:%s",
+					response.getStatus(), response.getReason()));
+		}
+		ListVolumeReply r = gson.fromJson(new String(response.getContent()), ListVolumeReply.class);
+		client.stop();
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed list_volume");
+		else
+			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
+
+		String[][] data = new String[r.volumes.length][];
+		for(int i=0;i<r.volumes.length;i++) {
+				data[i] = new String[]{ Long.toString(r.volumes[i].id), r.volumes[i].name, Long.toString(r.volumes[i].size),
+						Integer.toString(r.volumes[i].rep_count), r.volumes[i].status };
+		};
+		ASCIITable.getInstance().printTable(header, data);
+
+	}
 	private static String getLeaderIp(Config cfg) throws ConfigException, IOException, KeeperException, InterruptedException {
 		String zkIp = cfg.getString("zookeeper", "ip", null, true);
 		if(zkIp == null)

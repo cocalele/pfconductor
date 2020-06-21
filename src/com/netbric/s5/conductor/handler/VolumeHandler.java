@@ -368,7 +368,7 @@ public class VolumeHandler
 				{
 					S5Database.getInstance()
 							.sql("select t_tray.id from t_tray, v_tray_free_size where name=? and t_tray.store_id=? and "
-									+ " t_tray.status=0 and v_tray_free_size.free_size>=? and v_tray_free_size.store_id=t_tray.store_id "
+									+ " t_tray.status='OK' and v_tray_free_size.free_size>=? and v_tray_free_size.store_id=t_tray.store_id "
 									+ "and v_tray_free_size.tray_uuid=t_tray.uuid ",
 							"TRAY-" + tray_ids[i], store_ids[i], volume_size).transaction(trans).first(Integer.class);
 				}
@@ -393,7 +393,7 @@ public class VolumeHandler
 			List<HashMap> list = S5Database.getInstance()
 					.sql("select t.store_id,t.tray_uuid,max(t.free_size) as max_tray, "
 							+ "s.free_size as store_free from v_tray_free_size as t,v_store_free_size as s "
-							+ "where t.store_id = s.store_id and t.free_size>=? and t.status=0 "
+							+ "where t.store_id = s.store_id and t.free_size>=? and t.status='OK' "
 							+ "group by t.store_id order by s.free_size desc limit 3 ", volume_size).transaction(trans)
 					.results(HashMap.class);
 
@@ -401,7 +401,7 @@ public class VolumeHandler
 				throw new InvalidParamException("only " + list.size()
 						+ " stores has tray with capacity over " + volume_size + "(byte) but replica is " + replica_count);
 
-			// now choose tray for replica^M
+			// now choose tray for replica
 
 			for (int i = 0; i < list.size(); i++)
 			{
@@ -416,7 +416,7 @@ public class VolumeHandler
 			for (int i = 0; i < replica_count; i++)
 			{
 				List<HashMap> list = S5Database.getInstance()
-						.sql("select store_id, tray_uuid, max(free_size),0 from v_tray_free_size where free_size >=? and store_id=? and status=0",
+						.sql("select store_id, tray_uuid, max(free_size),0 from v_tray_free_size where free_size >=? and store_id=? and status='OK'",
 								volume_size, store_ids[i]).transaction(trans)
 						.results(HashMap.class);
 
@@ -575,7 +575,7 @@ public class VolumeHandler
 		int tenant_idx = S5Database.getInstance().sql("select id from t_tenant where name=?", name)
 				.first(Integer.class);
 		List<Volume> volumes = S5Database.getInstance()
-				.sql("select id, name, size, iops, bw from t_volume where tenant_id=?", tenant_idx).results(Volume.class);
+				.sql("select * from t_volume where tenant_id=?", tenant_idx).results(Volume.class);
 
 		if (limit >= volumes.size())
 			limit = volumes.size();

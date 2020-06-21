@@ -12,12 +12,12 @@ public class Volume
 	public int iops;
 	public int cbs;
 	public int bw;
+	public String status;
 	@OneToOne
 	@JoinColumn(name = "id")
 	@JoinTable(name="t_tenant")
 	public int tenant_id;
 	public int quotaset_id;
-	public String status;
 	public int exposed; //1 means exposed, 0 means not
 	public int rep_count; //replica count, 1, 2, 3
 	public long shard_size; //shard size, default 64G

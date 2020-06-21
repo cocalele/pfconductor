@@ -7,12 +7,12 @@ DROP PROCEDURE IF EXISTS check_db_ver;
 DELIMITER $$
 CREATE PROCEDURE check_db_ver()
 BEGIN
-        DECLARE majorv int;
+	DECLARE majorv int;
 	select convert(SUBSTRING_INDEX(version(), '.', 1), integer)  into majorv;
 	if majorv < 11 then
-		\! echo "Need MariaDB version 10 or higher";
+		\! echo "Need MariaDB version 10.4 or higher";
 		exit;
-	end if
+	end if;
 END
 $$
 DELIMITER ;
@@ -145,7 +145,7 @@ create table t_replica(
 	status varchar(16));
 
 create view v_store_alloc_size as  select store_id, sum(size) as alloc_size from t_volume, t_replica where t_volume.id=t_replica.volume_id group by t_replica.store_id;
-create view v_store_total_size as  select store_id, sum(t.raw_capacity) as total_size from t_tray as t where t.status=0 group by t.store_id;
+create view v_store_total_size as  select store_id, sum(t.raw_capacity) as total_size from t_tray as t where t.status="OK" group by t.store_id;
 create view v_store_free_size as select t.store_id, t.total_size, COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size 
  from v_store_total_size as t left join v_store_alloc_size as a on t.store_id=a.store_id order by free_size desc;
 create view v_tray_alloc_size as select  t_replica.store_id as store_id, tray_uuid, sum(size) as alloc_size from t_volume, t_replica where t_volume.id = t_replica.volume_id group by t_replica.tray_uuid , t_replica.store_id;	
