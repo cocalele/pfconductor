@@ -5,6 +5,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.conductor.*;
 import com.netbric.s5.conductor.rpc.CreateVolumeReply;
+import com.netbric.s5.conductor.rpc.ListStoreReply;
+import com.netbric.s5.conductor.rpc.ListVolumeReply;
 import org.apache.commons.cli.*;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -26,17 +28,18 @@ public class CliMain
 {
 
 	static final Logger logger = LoggerFactory.getLogger(CliMain.class);
+	static final String defaultCfgPath = "/etc/pureflash/pf.conf";
 	static String[][] validCmds = {
-			{"get_pfc", "Get the active conductor IP"},
-			{"create_volume", " -v <vol_namej> -s <size>\ncreate a volume,"},
-			{"list_volume", "list volumes"}
+			{"get_pfc", "", "Get the active conductor IP"},
+			{"create_volume", " -v <vol_namej> -s <size> [-r <replica_num>]", "create a volume"},
+			{"list_volume", "", "list volumes"}
 	};
 	private static void printUsage()
 	{
 		System.out.println("Usage: pfcli <command> [options]");
 		System.out.println("Valid command can be:");
 		for(String[] cmd : validCmds)
-			System.out.printf("       %s %s", cmd[0], cmd[1]);
+			System.out.printf("       %s %s\n\t%s\n", cmd[0], cmd[1], cmd[2]);
 
 	}
 
@@ -75,7 +78,7 @@ public class CliMain
 		CommandLine cmd;
 
 		// add t option
-		options.addOption("c", true, "s5 config file path");
+		options.addOption("c", true, "s5 config file path, default:"+defaultCfgPath);
 		options.addOption("h", "help", false, "conductor node index");
 		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE");
 
@@ -94,7 +97,7 @@ public class CliMain
 				{
 					args = ArrayUtils.remove(args, 0);
 					cmd = cp.parse(options, args);
-					String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
+					String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 					Config cfg = new Config(cfgPath);
 					String leader = getLeaderIp(cfg);
 					System.out.println(leader);
@@ -104,11 +107,13 @@ public class CliMain
 				{
 					options.addOption(buildOption("v", "name", true, true, "Volume name to create"));
 					options.addOption(buildOption("s", "size", true, true, "Volume size"));
+					options.addOption(buildOption("r", "rep_num", true, false, "Replica number, default 1"));
 					args = ArrayUtils.remove(args, 0);
 					cmd = cp.parse(options, args);
-					String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
+					String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 					String volumeName = cmd.getOptionValue('v');
 					long size = parseNumber(cmd.getOptionValue('s'));
+					long rep_num = parseNumber(cmd.getOptionValue('r', "1"));
 					Config cfg = new Config(cfgPath);
 					String leader = getLeaderIp(cfg);
 					GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
@@ -117,8 +122,8 @@ public class CliMain
 
 					org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 					client.start();
-					String url = String.format("http://%s:49180/s5c/?op=create_volume&name=%s&size=%d",
-							leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size);
+					String url = String.format("http://%s:49180/s5c/?op=create_volume&name=%s&size=%d&rep_cnt=%d",
+							leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size, rep_num);
 					logger.info("Send request:{}", url);
 					ContentResponse response = client.newRequest(url)
 							.method(org.eclipse.jetty.http.HttpMethod.GET)
@@ -148,6 +153,9 @@ public class CliMain
 				case "list_volume":
 					cmd_list_volume(args, options);
 					break;
+				case "list_store":
+					cmd_list_store(args, options);
+					break;
 				default:
 				{
 					logger.error("Invalid command:{}", args[0]);
@@ -168,7 +176,7 @@ public class CliMain
 		CommandLineParser cp = new DefaultParser();
 		CommandLine cmd;
 		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', "/etc/s5/s5.conf");
+		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 		Config cfg = new Config(cfgPath);
 		String leader = getLeaderIp(cfg);
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
@@ -199,6 +207,44 @@ public class CliMain
 		for(int i=0;i<r.volumes.length;i++) {
 				data[i] = new String[]{ Long.toString(r.volumes[i].id), r.volumes[i].name, Long.toString(r.volumes[i].size),
 						Integer.toString(r.volumes[i].rep_count), r.volumes[i].status };
+		};
+		ASCIITable.getInstance().printTable(header, data);
+
+	}
+	static void cmd_list_store(String[] args, Options options) throws Exception {
+		CommandLineParser cp = new DefaultParser();
+		CommandLine cmd;
+		cmd = cp.parse(options, args);
+		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+		Config cfg = new Config(cfgPath);
+		String leader = getLeaderIp(cfg);
+		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+		Gson gson = builder.create();
+
+		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
+		client.start();
+		String url = String.format("http://%s:49180/s5c/?op=list_store", leader);
+		logger.info("Send request:{}", url);
+		ContentResponse response = client.newRequest(url)
+				.method(org.eclipse.jetty.http.HttpMethod.GET)
+				.send();
+		logger.info("Get response:{}", response.getContentAsString());
+		if(response.getStatus() < 200 || response.getStatus() >= 300)
+		{
+			throw new IOException(String.format("Failed to list_store, HTTP status:%d, reason:%s",
+					response.getStatus(), response.getReason()));
+		}
+		ListStoreReply r = gson.fromJson(new String(response.getContent()), ListStoreReply.class);
+		client.stop();
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed list_volume");
+		else
+			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Id", "Management IP", "Status"};
+
+		String[][] data = new String[r.store_nodes.length][];
+		for(int i=0;i<r.store_nodes.length;i++) {
+			data[i] = new String[]{ Long.toString(r.store_nodes[i].id), r.store_nodes[i].mngt_ip, r.store_nodes[i].status };
 		};
 		ASCIITable.getInstance().printTable(header, data);
 

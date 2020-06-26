@@ -249,7 +249,7 @@ public class VolumeHandler
 			}
 
 			v.id = S5Database.getInstance().queryLongValue("select NEXTVAL(seq_gen)  as val") << 24;
-			v.rep_count = Utils.getParamAsInt(request, "replica", 1);
+			v.rep_count = Utils.getParamAsInt(request, "rep_cnt", 1);
 			if(v.rep_count < 1 || v.rep_count >3)
 			{
 				return new RestfulReply(op, RetCode.INVALID_ARG,
@@ -270,7 +270,6 @@ public class VolumeHandler
 			store_name[1] = Utils.getParamAsString(request, "store_1", null);
 			store_name[2] = Utils.getParamAsString(request, "store_2", null);
 			select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
-
 
 			S5Database.getInstance().transaction(trans).insert(v);
 			long shardCount = (v.size + v.shard_size-1)/v.shard_size;

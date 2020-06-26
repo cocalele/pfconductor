@@ -1,6 +1,8 @@
-package com.netbric.s5.conductor;
+package com.netbric.s5.conductor.rpc;
 
-public class ListVolumeReply  extends RestfulReply{
+import com.netbric.s5.conductor.RestfulReply;
+
+public class ListVolumeReply  extends RestfulReply {
     public static class VolumeInfo {
         public long id;
         public String name;
