@@ -84,6 +84,7 @@ public class S5Database extends Database
 			config.setJdbcUrl(String.format("jdbc:mysql://%s:3306/%s?useSSL=false&serverTimezone=UTC", dbIp, dbName));
 			config.setUsername(dbUser);
 			config.setPassword(dbPass);
+			config.setMaximumPoolSize(5);
 			return new HikariDataSource(config);
 
 		}

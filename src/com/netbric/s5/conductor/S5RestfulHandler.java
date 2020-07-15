@@ -155,7 +155,9 @@ public class S5RestfulHandler extends AbstractHandler
 		}
         GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
         Gson gson = builder.create();
-        response.getWriter().write((gson.toJson(reply)));
+        String reply_str = gson.toJson(reply);
+        logger.info("{}", reply_str);
+        response.getWriter().write(reply_str);
         baseRequest.setHandled(true);
 	}
 

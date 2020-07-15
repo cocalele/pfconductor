@@ -6,6 +6,8 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.netbric.s5.conductor.rpc.ListDiskReply;
+import com.netbric.s5.conductor.rpc.ListStoreReply;
 import com.netbric.s5.orm.Port;
 import org.apache.commons.lang3.StringUtils;
 
@@ -112,24 +114,6 @@ public class StoreHandler
 		}
 	}
 
-	static class ListStoreReply extends RestfulReply
-	{
-		public ListStoreReply(String op, List<StoreNode> stores)
-		{
-			super(op);
-			this.storeNodes = stores;
-		}
-		List<StoreNode> storeNodes;
-	}
-	static class ListTrayReply extends RestfulReply
-	{
-		public ListTrayReply(String op, List<Tray> trays)
-		{
-			super(op);
-			this.trays = trays;
-		}
-		List<Tray> trays;
-	}
 	public RestfulReply list_storenode(HttpServletRequest request, HttpServletResponse response)
 	{
 		List<StoreNode> nodes = S5Database.getInstance().results(StoreNode.class);
@@ -141,7 +125,7 @@ public class StoreHandler
 	{
 		List<Tray> trays = S5Database.getInstance().results(Tray.class);
 
-		RestfulReply reply = new ListTrayReply(request.getParameter("op"), trays);
+		RestfulReply reply = new ListDiskReply(request.getParameter("op"), trays);
 		return reply;
 	}
 

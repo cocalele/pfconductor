@@ -156,7 +156,9 @@ create view v_tray_free_size as select t.store_id as store_id, t.tray_uuid as tr
 
 create view v_replica_ext as
 select v.id as volume_id, v.name as volume_name, s.id as shard_id, s.shard_index as shard_index, r.id as replica_id, r.replica_index as replica_index, r.status_time as status_time,
-if(s.primary_rep_index=r.replica_index, 1, 0) as is_primary, r.store_id, r.tray_uuid, r.status
+if(s.primary_rep_index=r.replica_index, 1, 0) as is_primary, r.store_id, r.tray_uuid, r.status,
+(select group_concat(p.ip_addr) from t_port as p where p.store_id=r.store_id and p.purpose=0) data_ports,
+(select group_concat(p.ip_addr) from t_port as p where p.store_id=r.store_id and p.purpose=1) rep_ports
 from t_volume as v, t_shard as s, t_replica as r  where v.id=s.volume_id and s.id=r.shard_id;
 
 create view v_replica_full as select v.id as volume_id, v.name as volume_name, s.id as shard_id, s.shard_index as shard_index, r.id as replica_id, 

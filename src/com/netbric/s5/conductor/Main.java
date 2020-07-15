@@ -14,14 +14,6 @@ import org.eclipse.jetty.server.handler.ContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
-
 import com.netbric.s5.cluster.ClusterManager;
 
 public class Main

@@ -209,13 +209,19 @@ public class ClusterManager
 	public static void updateStoreTrays(int  store_id)
 	{
 		try {
-			List<String> trays = zk.getChildren("/s5/stores/"+store_id+"/trays", null);
+			String trayOnZk = "/s5/stores/"+store_id+"/trays";
+			List<String> trays = zk.getChildren(trayOnZk, null);
+			S5Database.getInstance().sql("update t_tray set status=? where status=? and store_id=?", Status.OFFLINE, Status.OK, store_id).execute();
 			for(String t : trays)
 			{
 
 				Tray tr = new Tray();
 				tr.uuid = t;
-				tr.status = Status.OK;
+				if ( zk.exists(trayOnZk+"/"+t+"/online", null) == null)
+					tr.status = Status.OFFLINE;
+				else
+					tr.status = Status.OK;
+				logger.info("{} {}", t, tr.status);
 				tr.store_id =store_id;
 				tr.device = new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/devname", false, null));
 				tr.raw_capacity = Long.parseLong(new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));

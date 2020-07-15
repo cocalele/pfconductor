@@ -30,22 +30,23 @@ import java.util.concurrent.TimeoutException;
 
 public class VolumeHandler
 {
-	class ReplicaArg
+	public static class ReplicaArg
 	{
-		public int index;
-		public int store_id;
+		public long index;
+		public long store_id;
 		public String tray_uuid;
 		public String status;
+		public String rep_ports;
 	};
-	class ShardArg
+	public static class ShardArg
 	{
-		public int index;
+		public long index;
 		public List<ReplicaArg> replicas;
-		public int primary_rep_index;
+		public long primary_rep_index;
 		public String status;
 	};
 
-	public class PrepareVolumeArg
+	public static class PrepareVolumeArg
 	{
 		public String op;
 		public String status;
@@ -59,12 +60,14 @@ public class VolumeHandler
 		public List<ShardArg> shards;
 	}
 
-	class ShardInfoForClient
+	public static class ShardInfoForClient
 	{
-		public int index;
-		public List<String> store_ips;
+		public long index;
+		public String store_ips;
+		public String status;
+		public ShardInfoForClient(){}
 	};
-	public class OpenVolumeReply extends RestfulReply
+	public static class OpenVolumeReply extends RestfulReply
 	{
 		public String status;
 		public String volume_name;
@@ -308,7 +311,7 @@ public class VolumeHandler
 
 	private void select_store(Transaction trans, int replica_count, long volume_size, String[] store_names,
 			String[] tray_ids, int[] store_ids) throws InvalidParamException {
-		if (replica_count != 1 && replica_count != 3)
+		if (replica_count < 1 && replica_count > 3)
 		{
 			throw new InvalidParamException(String.format("invalid replica count:%d", replica_count));
 		}
@@ -585,7 +588,7 @@ public class VolumeHandler
 
 	}
 
-	PrepareVolumeArg getPrepareArgs(String tenant_name, String volume_name) throws InvalidParamException {
+	PrepareVolumeArg getPrepareArgs(String tenant_name, String volume_name) throws InvalidParamException, StateException {
 		Volume vol = S5Database.getInstance()
 				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.name=? and t_volume.name=? and t_volume.tenant_id=t_tenant.id",
 						tenant_name, volume_name)
@@ -595,37 +598,33 @@ public class VolumeHandler
 		if (!vol.status.equals(Status.OK))
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be exposed");
 
-
-		List<Replica> reps = S5Database.getInstance().where("volume_id=? and status!=?", vol.id, Status.ERROR)
-				.orderBy("status asc").results(Replica.class);
-		if (reps.size() == 0)
-			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " no replicas available");
+		List<Shard> shards = S5Database.getInstance().where("volume_id=?", vol.id).results(Shard.class);
 
 		PrepareVolumeArg arg = new PrepareVolumeArg();
 		arg.status = vol.status;
 		arg.volume_name = vol.name;
 		arg.volume_size = vol.size;
 		arg.volume_id =vol.id;
-		arg.shard_count = 1;//TODO: not support shard yet
+		arg.shard_count = shards.size();//TODO: not support shard yet
 		arg.rep_count=vol.rep_count;
 		arg.meta_ver = vol.meta_ver;
 		arg.snap_seq = vol.snap_seq;
 		arg.shards = new ArrayList<>(arg.shard_count);
+
 		for(int i=0;i<arg.shard_count;i++)
 		{
+			Shard dbShard = shards.get(i);
 			ShardArg shard = new ShardArg();
-			shard.index=i;
-			shard.status = "OK";
-			shard.replicas = new ArrayList<>(arg.rep_count);
-			for(int repIdx = 0; repIdx<arg.rep_count;repIdx ++)
-			{
-				ReplicaArg rep = new ReplicaArg();
-				rep.index = repIdx;
-				rep.tray_uuid = reps.get(repIdx).tray_uuid;
-				rep.store_id = reps.get(repIdx).store_id;
-				rep.status = reps.get(repIdx).status;
-				shard.replicas.add(rep);
-			}
+			shard.index=dbShard.shard_index;
+			shard.status = dbShard.status;
+			shard.primary_rep_index = dbShard.primary_rep_index;
+			long shardId = dbShard.id;
+
+			shard.replicas = S5Database.getInstance().sql("select r.replica_index as 'index', r.tray_uuid, r.store_id, r.status, r.store_id, r.status, r.rep_ports " +
+					" from v_replica_ext r where r.shard_id=?", shardId)
+					.results(ReplicaArg.class);
+			if (shard.replicas.size() == 0)
+				throw new StateException("Volume:" + tenant_name + ":" + volume_name + " no replicas available");
 			arg.shards.add(shard);
 		}
 		return arg;
@@ -669,14 +668,6 @@ public class VolumeHandler
 		S5Database.getInstance().sql("update t_replica set status='ERROR' where volume_id=? and store_id=?", volumeId, storeId).execute();
 	}
 
-	public static class TempShard
-	{
-		public long store_id;
-		public long is_primary;
-		public long shard_index;
-		public TempShard() {}
-	}
-
 	private OpenVolumeReply getVolumeInfoForClient(long volumeId)
 	{
 		Volume v = S5Database.getInstance().where("id=?", volumeId).first(Volume.class);
@@ -696,30 +687,18 @@ public class VolumeHandler
 		}
 		logger.info("{} ports found ", portMap.size());
 
-		List<TempShard> rawShards = S5Database.getInstance().sql("select store_id, is_primary, shard_index from v_replica_ext as r\n" +
-				" where  volume_id=? and r.status='OK' order by shard_index, is_primary desc, status_time asc, replica_index asc", volumeId).results(TempShard.class);
-		HashMap<Integer, ShardInfoForClient> shards = new HashMap<>(rawShards.size());
-		for(Iterator<TempShard> it=rawShards.iterator(); it.hasNext(); )
-		{
-			TempShard s = it.next();
-			ShardInfoForClient shard = shards.get(s.shard_index);
-			if(shard == null)
-			{
-				shard = new ShardInfoForClient();
-				shard.index = (int)s.shard_index;
-				if(portMap.containsKey((int)s.store_id))
-					shard.store_ips = (ArrayList<String>)portMap.get((int)s.store_id).clone();
-				else
-					logger.error("No available port for store:{}", s.store_id);
-				shards.put((int)s.shard_index, shard);
-			}
-			else
-			{
-				shard.store_ips.addAll(portMap.get((int)s.store_id));
-			}
+		List<ShardInfoForClient> shards = S5Database.getInstance().sql("select s.status, s.shard_index as 'index', (select group_concat(data_ports order by is_primary desc)"+
+						" from  v_replica_ext where shard_id=s.id and status='OK') as store_ips from t_shard as s where s.volume_id=?", volumeId).results(ShardInfoForClient.class);
 
+		logger.info("shard cnt:{}", shards.size());
+		for(ShardInfoForClient sd : shards) {
+			if(sd.store_ips == null)
+			{
+				sd.store_ips = "";
+				sd.status = "ERROR";
+			}
+			logger.info("store_ips:{}", sd.store_ips);
 		}
-
 		OpenVolumeReply reply = new OpenVolumeReply("open_volume", RetCode.OK, null);
 		reply.volume_id=v.id;
 		reply.volume_name=v.name;
@@ -728,8 +707,8 @@ public class VolumeHandler
 		reply.status = v.status;
 		reply.meta_ver = v.meta_ver;
 		reply.snap_seq = v.snap_seq;
-		reply.shards = new ShardInfoForClient[shards.values().size()];
-		shards.values().toArray(reply.shards);
+		reply.shards = new ShardInfoForClient[shards.size()];
+		shards.toArray(reply.shards);
 		return reply;
 	}
 	public RestfulReply open_volume(HttpServletRequest request, HttpServletResponse response) {
@@ -768,7 +747,7 @@ public class VolumeHandler
 					}
 				}
 			} while (need_reprepare);
-		} catch (InvalidParamException e1) {
+		} catch (InvalidParamException | StateException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
 		return getVolumeInfoForClient(volumeId);

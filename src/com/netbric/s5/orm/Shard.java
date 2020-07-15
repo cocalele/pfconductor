@@ -9,8 +9,8 @@ public class Shard {
     @Id
     public long id;
     public long volume_id;
-    public int shard_index;
-    public int primary_rep_index;
+    public long shard_index;
+    public long primary_rep_index;
     public String status;
     public Timestamp status_time;
 }

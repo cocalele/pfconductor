@@ -4,7 +4,9 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.conductor.*;
+import com.netbric.s5.conductor.handler.StoreHandler;
 import com.netbric.s5.conductor.rpc.CreateVolumeReply;
+import com.netbric.s5.conductor.rpc.ListDiskReply;
 import com.netbric.s5.conductor.rpc.ListStoreReply;
 import com.netbric.s5.conductor.rpc.ListVolumeReply;
 import org.apache.commons.cli.*;
@@ -80,7 +82,7 @@ public class CliMain
 		// add t option
 		options.addOption("c", true, "s5 config file path, default:"+defaultCfgPath);
 		options.addOption("h", "help", false, "conductor node index");
-		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE");
+		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
 
 		try
 		{
@@ -155,6 +157,9 @@ public class CliMain
 					break;
 				case "list_store":
 					cmd_list_store(args, options);
+					break;
+				case "list_disk":
+					cmd_list_disk(args, options);
 					break;
 				default:
 				{
@@ -242,9 +247,47 @@ public class CliMain
 			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
 		String [] header = { "Id", "Management IP", "Status"};
 
-		String[][] data = new String[r.store_nodes.length][];
-		for(int i=0;i<r.store_nodes.length;i++) {
-			data[i] = new String[]{ Long.toString(r.store_nodes[i].id), r.store_nodes[i].mngt_ip, r.store_nodes[i].status };
+		String[][] data = new String[r.storeNodes.size()][];
+		for(int i=0;i<r.storeNodes.size();i++) {
+			data[i] = new String[]{ Long.toString(r.storeNodes.get(i).id), r.storeNodes.get(i).mngtIp, r.storeNodes.get(i).status };
+		};
+		ASCIITable.getInstance().printTable(header, data);
+
+	}
+	static void cmd_list_disk(String[] args, Options options) throws Exception {
+		CommandLineParser cp = new DefaultParser();
+		CommandLine cmd;
+		cmd = cp.parse(options, args);
+		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+		Config cfg = new Config(cfgPath);
+		String leader = getLeaderIp(cfg);
+		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+		Gson gson = builder.create();
+
+		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
+		client.start();
+		String url = String.format("http://%s:49180/s5c/?op=list_disk", leader);
+		logger.info("Send request:{}", url);
+		ContentResponse response = client.newRequest(url)
+				.method(org.eclipse.jetty.http.HttpMethod.GET)
+				.send();
+		logger.info("Get response:{}", response.getContentAsString());
+		if(response.getStatus() < 200 || response.getStatus() >= 300)
+		{
+			throw new IOException(String.format("Failed to list_store, HTTP status:%d, reason:%s",
+					response.getStatus(), response.getReason()));
+		}
+		ListDiskReply r = gson.fromJson(new String(response.getContent()), ListDiskReply.class);
+		client.stop();
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed list_volume");
+		else
+			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Store ID", "uuid",  "Status"};
+
+		String[][] data = new String[r.trays.size()][];
+		for(int i=0;i<r.trays.size();i++) {
+			data[i] = new String[]{ Long.toString(r.trays.get(i).store_id), r.trays.get(i).uuid, r.trays.get(i).status };
 		};
 		ASCIITable.getInstance().printTable(header, data);
 
