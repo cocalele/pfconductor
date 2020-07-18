@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import com.dieselpoint.norm.Query;
 import com.netbric.s5.orm.*;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -16,9 +17,6 @@ import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.zookeeper.Watcher.Event.EventType.NodeCreated;
-import static org.apache.zookeeper.Watcher.Event.EventType.NodeDeleted;
-
 public class ClusterManager
 {
 
@@ -30,6 +28,7 @@ public class ClusterManager
 	 */
 	static final Logger logger = LoggerFactory.getLogger(ClusterManager.class);
 	private static ZooKeeper zk;
+	public static ZkHelper zkHelper;
 	private static Object locker = new Object();
 
 	public static void registerAsConductor(String managmentIp, String zkIp) throws Exception
@@ -58,7 +57,8 @@ public class ClusterManager
 			{
 				zk.create("/s5", null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 			}
-			createZkNodeIfNotExist("/s5/conductors",null);
+			zkHelper = new ZkHelper(zk);
+			zkHelper.createZkNodeIfNotExist("/s5/conductors",null);
 			zk.create("/s5/conductors/conductor", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 		}
 		catch (IOException | KeeperException | InterruptedException e)
@@ -124,59 +124,9 @@ public class ClusterManager
 		}
 	}
 
-	public static  void watchNodeForChildChange(String path,
-											 java.util.function.BiConsumer<EventType, String> func) throws KeeperException, InterruptedException {
-		new Thread(()->{
-			try {
-				zk.getChildren(path, new Watcher() {
-					@Override
-					public void process(WatchedEvent event) {
-						logger.info("ZK event:{} on path:{}", event.getType().toString(), event.getPath());
-						if (event.getType() != NodeCreated && event.getType() != NodeDeleted) {
-							logger.error("Unexpected zk event:{}", event.getType().toString());
-							return;
-						}
-						func.accept(event.getType(), event.getPath());
-					}
-				});
-			}
-			catch (Exception e)
-			{
-				logger.error("Error during watch zk:", e);
-			}
-		});
-
-	}
-
-	public static  void watchStoreAlive(int id,
-												java.util.function.BiConsumer<EventType, String> func) {
-		new Thread(()->{
-			try {
-				String path = String.format("/s5/stores/%d/alive", id);
-				zk.exists(path, new Watcher() {
-					@Override
-					public void process(WatchedEvent event) {
-						logger.info("ZK event:{} on path:{}", event.getType().toString(), event.getPath());
-						if (event.getType() != NodeCreated && event.getType() != NodeDeleted) {
-							logger.error("Unexpected zk event:{}", event.getType().toString());
-							return;
-						}
-						func.accept(event.getType(), event.getPath());
-					}
-				});
-			}
-			catch (Exception e)
-			{
-				logger.error("Error during watch alive:", e);
-			}
-		});
-
-	}
-
 	public static void updateStoresFromZk()
 	{
 		try {
-		  createZkNodeIfNotExist("/s5/stores", null);
 			List<String> nodes = zk.getChildren("/s5/stores", null);
 			for(String n : nodes)
 			{
@@ -187,7 +137,7 @@ public class ClusterManager
 		}
 
 	}
-	public static void updateStoreFromZk(int id)  {
+	public static void updateStoreFromZk(int id) {
 		String path = String.format("/s5/stores/%d", id);
 
 		StoreNode n = new StoreNode();
@@ -198,7 +148,15 @@ public class ClusterManager
 			return;
 		}
 		n.id=id;
-		n.status = StoreNode.STATUS_OK;
+
+		try {
+			if(zk.exists("/s5/stores/"+id+"/alive", false) == null)
+				n.status = StoreNode.STATUS_OFFLINE;
+			else
+				n.status = StoreNode.STATUS_OK;
+		} catch (KeeperException |InterruptedException e) {
+			logger.error("Failed update store from ZK:", e);
+		}
 		if(S5Database.getInstance().sql("select count(*) from t_store where id=?", id).first(long.class) == 0)
 			S5Database.getInstance().insert(n);
 		else
@@ -210,6 +168,13 @@ public class ClusterManager
 	{
 		try {
 			String trayOnZk = "/s5/stores/"+store_id+"/trays";
+			zkHelper.watchNewChild(trayOnZk, new ZkHelper.NewChildCallback() {
+				@Override
+				void onNewChild(String childPath) {
+					logger.info("New disk found in zk:{}", childPath);
+					updateStoreTrays(store_id);
+				}
+			});
 			List<String> trays = zk.getChildren(trayOnZk, null);
 			S5Database.getInstance().sql("update t_tray set status=? where status=? and store_id=?", Status.OFFLINE, Status.OK, store_id).execute();
 			for(String t : trays)
@@ -225,6 +190,20 @@ public class ClusterManager
 				tr.store_id =store_id;
 				tr.device = new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/devname", false, null));
 				tr.raw_capacity = Long.parseLong(new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
+				zkHelper.watchNode("/s5/stores/"+store_id+"/trays/"+t+"/online", new ZkHelper.NodeChangeCallback() {
+					@Override
+					void onNodeCreate(String childPath) {
+						logger.info("ssd online, {}", childPath);
+						S5Database.getInstance().sql("update t_tray set status=? where uuid=?", Status.OK, t).execute();
+					}
+
+					@Override
+					void onNodeDelete(String childPath) {
+						logger.info("ssd offline, {}", childPath);
+						S5Database.getInstance().sql("update t_tray set status=? where uuid=?", Status.OFFLINE, t).execute();
+
+					}
+				});
 				if(S5Database.getInstance().sql("select count(*) from t_tray where uuid=?", t).first(long.class) == 0)
 					S5Database.getInstance().insert(tr);
 				else
@@ -262,38 +241,48 @@ public class ClusterManager
 
 	}
 
+	static class AliveWatchCbk extends ZkHelper.NodeChangeCallback {
+		int id;
+		public AliveWatchCbk(int id)
+		{
+			this.id=id;
+		}
+		@Override
+		void onNodeCreate(String childPath) {
+			logger.info("{} created", childPath);
+			updateStoreFromZk(id);
+		}
+
+		@Override
+		void onNodeDelete(String childPath) {
+			logger.error("{} removed", childPath);
+			S5Database.getInstance().sql("update t_store set status=? where id=?", Status.OFFLINE, id).execute();
+		}
+	}
 	public static void watchStores()
 	{
-//		BiConsumer<org.apache.zookeeper.Watcher.Event.EventType, String> c =
 		try {
-			watchNodeForChildChange("/s5/stores", (EventType evt, String path) -> {
-				logger.info("{} on path: {}", evt, path);
-				if(evt == EventType.NodeCreated)
-				{
-					int id = Integer.parseInt(path.substring(path.lastIndexOf('/')+1));
-
-					watchStoreAlive(id, (EventType evt2, String path2)->{
-						if(evt == EventType.NodeCreated)
-						{
-							updateStoreFromZk(id);
-						}
-					});
-
-				}
-
-			});
+			List<String> nodes = zk.getChildren("/s5/stores", null);
+			for(String n : nodes)
+			{
+				zkHelper.watchNode("/s5/stores/" + n + "/alive", new AliveWatchCbk(Integer.parseInt(n)));
+			}
+		} catch (KeeperException | InterruptedException e) {
+			logger.error("Failed access zk",e);
 		}
-		catch(Exception e)
-		{
-			logger.error("Error during watch alive:", e);
-		}
-	}
-	private static void createZkNodeIfNotExist(String path, String data) throws KeeperException, InterruptedException {
-		if(zk.exists(path, false) != null)
-			return;
-		zk.create(path, data == null ? null : data.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+		zkHelper.watchNewChild("/s5/stores", new ZkHelper.NewChildCallback() {
+			@Override
+			void onNewChild(String childPath) {
+				logger.info("new store found on zk: {}", childPath);
+				int id = Integer.parseInt(childPath.substring(childPath.lastIndexOf('/')+1));
+				zkHelper.watchNode(childPath + "/alive", new AliveWatchCbk(id) );
+
+			}
+		});
 
 	}
+
 	/**
 	 * get list of all alive store
 	 * 

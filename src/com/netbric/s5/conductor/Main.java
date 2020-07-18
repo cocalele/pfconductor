@@ -18,6 +18,11 @@ import com.netbric.s5.cluster.ClusterManager;
 
 public class Main
 {
+	static {
+		System.setProperty("org.slf4j.simpleLogger.showDateTime", "true");
+		System.setProperty("org.slf4j.simpleLogger.dateTimeFormat", "[yyyy/MM/dd H:mm:ss.SSS]");
+
+	}
 	static final Logger logger = LoggerFactory.getLogger(Main.class);
 	private static void printUsage()
 	{
@@ -31,7 +36,6 @@ public class Main
 		options.addOption("c", true, "s5 config file path");
 		options.addOption("i", true, "conductor node index");
 		options.addOption("h", "help", false, "conductor node index");
-		
 		CommandLineParser cp = new DefaultParser();
 		CommandLine cmd;
 		try
@@ -86,6 +90,7 @@ public class Main
 			ClusterManager.registerAsConductor(managmentIp, zkIp);
 			ClusterManager.waitToBeMaster(managmentIp);
 			S5Database.getInstance().init(cfg);
+			ClusterManager.zkHelper.createZkNodeIfNotExist("/s5/stores", null);
 			ClusterManager.watchStores();
 			ClusterManager.updateStoresFromZk();
 
@@ -102,7 +107,7 @@ public class Main
 		catch (Exception e1)
 		{
 			e1.printStackTrace();
-			logger.error("Failed to start jconductor:", e1);
+			logger.error("Failed to start jconductor:{}", e1);
 		}
 
         // Can be accessed using http://localhost:8080/hello
