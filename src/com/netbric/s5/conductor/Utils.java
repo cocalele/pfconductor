@@ -17,7 +17,6 @@ public class Utils
 	}
 
 	public static String getParamAsString(HttpServletRequest request, String name, String defVal)
-			throws InvalidParamException
 	{
 		String v = request.getParameter(name);
 		if (StringUtils.isEmpty(v))

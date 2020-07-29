@@ -1,5 +1,6 @@
 package com.netbric.s5.conductor.handler;
 
+import com.dieselpoint.norm.Query;
 import com.dieselpoint.norm.Transaction;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -448,7 +449,7 @@ public class VolumeHandler
 			if (tenant == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
 
-			volume_name = Utils.getParamAsString(request, "volume_name");
+			volume_name = Utils.getParamAsString(request, "name");
 			Volume volume = S5Database.getInstance().table("t_volume").where("name=?", volume_name).first(Volume.class);
 			if (volume == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists: " + volume_name);
@@ -561,23 +562,25 @@ public class VolumeHandler
 		String op = request.getParameter("op");
 		String name = null;
 		int limit = 0;
-		try
-		{
-			name = Utils.getParamAsString(request, "by_tenant", "tenant_default");
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", name).first(Tenant.class);
-			if (t == null)
-				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + name);
+		name = Utils.getParamAsString(request, "by_tenant", "tenant_default");
+		Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", name).first(Tenant.class);
+		if (t == null)
+			return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + name);
 
-			limit = Utils.getParamAsInt(request, "limit", 20);
-		}
-		catch (InvalidParamException e)
-		{
-			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
-		}
+		limit = Utils.getParamAsInt(request, "limit", 20);
+
 		int tenant_idx = S5Database.getInstance().sql("select id from t_tenant where name=?", name)
 				.first(Integer.class);
-		List<Volume> volumes = S5Database.getInstance()
-				.sql("select * from t_volume where tenant_id=?", tenant_idx).results(Volume.class);
+		Query query = S5Database.getInstance().where("tenant_id=?", tenant_idx);
+		String vol_name = Utils.getParamAsString(request, "name", "");
+		List<Volume> volumes;
+		if(name != null && name.length() > 0) {
+			volumes = S5Database.getInstance()
+					.sql("select * from t_volume where tenant_id=? and name=?", tenant_idx, vol_name).results(Volume.class);
+		}else {
+			volumes = S5Database.getInstance()
+					.sql("select * from t_volume where tenant_id=?", tenant_idx).results(Volume.class);
+		}
 
 		if (limit >= volumes.size())
 			limit = volumes.size();

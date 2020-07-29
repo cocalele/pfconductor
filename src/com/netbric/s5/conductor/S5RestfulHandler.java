@@ -153,7 +153,9 @@ public class S5RestfulHandler extends AbstractHandler
 			reply = new RestfulReply(op, RetCode.INVALID_OP, ex.getMessage());
 			logger.error("Error processing:" + op, ex);
 		}
-        GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+        GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+		        .setPrettyPrinting();
+		       // .serializeNulls();
         Gson gson = builder.create();
         String reply_str = gson.toJson(reply);
         logger.info("{}", reply_str);
