@@ -23,13 +23,15 @@ public class ClusterManager
 	/**
 	 * register self as a conductor node
 	 * 
-	 * conductor节点，在启动后，在zookeeper的/s5/conductors/目录下创建EPHEMERAL_SEQUENTIAL类型的节点
+	 * conductor节点，在启动后，在zookeeper的/pureflash/<cluster_name>/conductors/目录下创建EPHEMERAL_SEQUENTIAL类型的节点
 	 * ,节点的名字为自己的管理IP。
 	 */
 	static final Logger logger = LoggerFactory.getLogger(ClusterManager.class);
 	private static ZooKeeper zk;
 	public static ZkHelper zkHelper;
 	private static Object locker = new Object();
+	public static String zkBaseDir;
+	public static final String defaultClusterName = "cluster1";
 
 	public static void registerAsConductor(String managmentIp, String zkIp) throws Exception
 	{
@@ -53,13 +55,17 @@ public class ClusterManager
 					}
 				}
 			});
-			if (zk.exists("/s5", false) == null)
+			if (zk.exists("/pureflash", false) == null)
 			{
-				zk.create("/s5", null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+				zk.create("/pureflash", null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+			}
+			if (zk.exists(zkBaseDir, false) == null)
+			{
+				zk.create(zkBaseDir, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 			}
 			zkHelper = new ZkHelper(zk);
-			zkHelper.createZkNodeIfNotExist("/s5/conductors",null);
-			zk.create("/s5/conductors/conductor", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+			zkHelper.createZkNodeIfNotExist(zkBaseDir + "/conductors",null);
+			zk.create(ClusterManager.zkBaseDir + "/conductors/conductor", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
 		}
 		catch (IOException | KeeperException | InterruptedException e)
 		{
@@ -79,17 +85,17 @@ public class ClusterManager
 		{
 			synchronized (locker)
 			{
-				List<String> list = zk.getChildren("/s5/conductors", true);
+				List<String> list = zk.getChildren(zkBaseDir + "/conductors", true);
 				String[] nodes = list.toArray(new String[list.size()]);
 				Arrays.sort(nodes);
 				while (true)
 				{
-					String leader = new String(zk.getData("/s5/conductors/" + nodes[0], true, null));
+					String leader = new String(zk.getData(zkBaseDir + "/conductors/" + nodes[0], true, null));
 					if(leader.equals(managmentIp))
 						break;
 					logger.info("the master is {}, not me, waiting...",	leader);
 					locker.wait();
-					list = zk.getChildren("/s5/conductors", true);
+					list = zk.getChildren(zkBaseDir + "/conductors", true);
 					nodes = list.toArray(new String[list.size()]);
 					Arrays.sort(nodes);
 				}
@@ -116,7 +122,7 @@ public class ClusterManager
 	{
 		try
 		{
-			zk.create("/s5/stores", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+			zk.create(zkBaseDir + "/stores", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
 		}
 		catch (KeeperException | InterruptedException e)
 		{
@@ -127,7 +133,7 @@ public class ClusterManager
 	public static void updateStoresFromZk()
 	{
 		try {
-			List<String> nodes = zk.getChildren("/s5/stores", null);
+			List<String> nodes = zk.getChildren(zkBaseDir + "/stores", null);
 			for(String n : nodes)
 			{
 				updateStoreFromZk(Integer.parseInt(n));
@@ -138,7 +144,7 @@ public class ClusterManager
 
 	}
 	public static void updateStoreFromZk(int id) {
-		String path = String.format("/s5/stores/%d", id);
+		String path = String.format(zkBaseDir + "/stores/%d", id);
 
 		StoreNode n = new StoreNode();
 		try {
@@ -150,7 +156,7 @@ public class ClusterManager
 		n.id=id;
 
 		try {
-			if(zk.exists("/s5/stores/"+id+"/alive", false) == null)
+			if(zk.exists(zkBaseDir + "/stores/"+id+"/alive", false) == null)
 				n.status = StoreNode.STATUS_OFFLINE;
 			else
 				n.status = StoreNode.STATUS_OK;
@@ -167,7 +173,7 @@ public class ClusterManager
 	public static void updateStoreTrays(int  store_id)
 	{
 		try {
-			String trayOnZk = "/s5/stores/"+store_id+"/trays";
+			String trayOnZk = zkBaseDir + "/stores/"+store_id+"/trays";
 			zkHelper.watchNewChild(trayOnZk, new ZkHelper.NewChildCallback() {
 				@Override
 				void onNewChild(String childPath) {
@@ -188,9 +194,9 @@ public class ClusterManager
 					tr.status = Status.OK;
 				logger.info("{} {}", t, tr.status);
 				tr.store_id =store_id;
-				tr.device = new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/devname", false, null));
-				tr.raw_capacity = Long.parseLong(new String(zk.getData("/s5/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
-				zkHelper.watchNode("/s5/stores/"+store_id+"/trays/"+t+"/online", new ZkHelper.NodeChangeCallback() {
+				tr.device = new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/devname", false, null));
+				tr.raw_capacity = Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
+				zkHelper.watchNode(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/online", new ZkHelper.NodeChangeCallback() {
 					@Override
 					void onNodeCreate(String childPath) {
 						logger.info("ssd online, {}", childPath);
@@ -220,7 +226,7 @@ public class ClusterManager
 	{
 		try {
 			for(int i=0;i<2;i++) {
-				String path = String.format("/s5/stores/%d/%s", store_id, i==0 ?"ports":"rep_ports");	
+				String path = String.format(zkBaseDir + "/stores/%d/%s", store_id, i==0 ?"ports":"rep_ports");
 				List<String> ports = zk.getChildren(path, null);
 				for(String ip : ports)
 				{
@@ -262,16 +268,16 @@ public class ClusterManager
 	public static void watchStores()
 	{
 		try {
-			List<String> nodes = zk.getChildren("/s5/stores", null);
+			List<String> nodes = zk.getChildren(zkBaseDir + "/stores", null);
 			for(String n : nodes)
 			{
-				zkHelper.watchNode("/s5/stores/" + n + "/alive", new AliveWatchCbk(Integer.parseInt(n)));
+				zkHelper.watchNode(zkBaseDir + "/stores/" + n + "/alive", new AliveWatchCbk(Integer.parseInt(n)));
 			}
 		} catch (KeeperException | InterruptedException e) {
 			logger.error("Failed access zk",e);
 		}
 
-		zkHelper.watchNewChild("/s5/stores", new ZkHelper.NewChildCallback() {
+		zkHelper.watchNewChild(zkBaseDir + "/stores", new ZkHelper.NewChildCallback() {
 			@Override
 			void onNewChild(String childPath) {
 				logger.info("new store found on zk: {}", childPath);

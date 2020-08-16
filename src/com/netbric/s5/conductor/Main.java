@@ -61,7 +61,7 @@ public class Main
 		String cfgPath = cmd.getOptionValue("c");
 		if(cfgPath == null)
 		{
-			cfgPath = "/etc/s5/s5.conf";
+			cfgPath = "/etc/pureflash/pfc.conf";
 			logger.warn("-c not specified, use {}", cfgPath);
 		}
 		Config cfg = new Config(cfgPath);
@@ -87,10 +87,12 @@ public class Main
 				System.err.println("zookeeper ip not specified in config file");
 				System.exit(1);
 			}
+			String clusterName = cfg.getString("cluster", "name", ClusterManager.defaultClusterName, false);
+			ClusterManager.zkBaseDir = "/pureflash/"+clusterName;
 			ClusterManager.registerAsConductor(managmentIp, zkIp);
 			ClusterManager.waitToBeMaster(managmentIp);
 			S5Database.getInstance().init(cfg);
-			ClusterManager.zkHelper.createZkNodeIfNotExist("/s5/stores", null);
+			ClusterManager.zkHelper.createZkNodeIfNotExist(ClusterManager.zkBaseDir + "/stores", null);
 			ClusterManager.watchStores();
 			ClusterManager.updateStoresFromZk();
 

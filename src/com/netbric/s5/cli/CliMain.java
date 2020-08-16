@@ -3,8 +3,8 @@ import com.bethecoder.ascii_table.ASCIITable;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.netbric.s5.cluster.ClusterManager;
 import com.netbric.s5.conductor.*;
-import com.netbric.s5.conductor.handler.StoreHandler;
 import com.netbric.s5.conductor.rpc.CreateVolumeReply;
 import com.netbric.s5.conductor.rpc.ListDiskReply;
 import com.netbric.s5.conductor.rpc.ListStoreReply;
@@ -31,6 +31,7 @@ public class CliMain
 
 	static final Logger logger = LoggerFactory.getLogger(CliMain.class);
 	static final String defaultCfgPath = "/etc/pureflash/pf.conf";
+	static String zkBaseDir;
 	static String[][] validCmds = {
 			{"get_pfc", "", "Get the active conductor IP"},
 			{"create_volume", " -v <vol_namej> -s <size> [-r <replica_num>]", "create a volume"},
@@ -81,26 +82,27 @@ public class CliMain
 
 		// add t option
 		options.addOption("c", true, "s5 config file path, default:"+defaultCfgPath);
-		options.addOption("h", "help", false, "conductor node index");
 		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
 
 		try
 		{
-			switch(args[0])
+			String cmd_verb = args[0];
+			if(cmd_verb.equals("help") || cmd_verb.equals("-h") || cmd_verb.equals("--help"))
 			{
-				case "help":
-				case "-h":
-				case "--help":
-				{
-					printUsage();
-					System.exit(1);
-				}
+				printUsage();
+				System.exit(1);
+			}
+			args = ArrayUtils.remove(args, 0);
+			cmd = cp.parse(options, args);
+			String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+			Config cfg = new Config(cfgPath);
+			String clusterName = cfg.getString("cluster", "name", ClusterManager.defaultClusterName, false);
+			zkBaseDir = "/pureflash/"+clusterName;
+			switch(cmd_verb)
+			{
+
 				case "get_leader_conductor":
 				{
-					args = ArrayUtils.remove(args, 0);
-					cmd = cp.parse(options, args);
-					String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-					Config cfg = new Config(cfgPath);
 					String leader = getLeaderIp(cfg);
 					System.out.println(leader);
 					break;
@@ -112,11 +114,9 @@ public class CliMain
 					options.addOption(buildOption("r", "rep_num", true, false, "Replica number, default 1"));
 					args = ArrayUtils.remove(args, 0);
 					cmd = cp.parse(options, args);
-					String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 					String volumeName = cmd.getOptionValue('v');
 					long size = parseNumber(cmd.getOptionValue('s'));
 					long rep_num = parseNumber(cmd.getOptionValue('r', "1"));
-					Config cfg = new Config(cfgPath);
 					String leader = getLeaderIp(cfg);
 					GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
 					Gson gson = builder.create();
@@ -161,9 +161,12 @@ public class CliMain
 				case "list_disk":
 					cmd_list_disk(args, options);
 					break;
+				case "get_pfc":
+					cmd_get_pfc(args, options);
+					break;
 				default:
 				{
-					logger.error("Invalid command:{}", args[0]);
+					logger.error("Invalid command:{}", cmd_verb);
 					return;
 				}
 			}
@@ -305,16 +308,24 @@ public class CliMain
 				logger.info("ZK event:{}", event.toString());
 			}
 		});
-		List<String> list = zk.getChildren("/s5/conductors", false);
+		List<String> list = zk.getChildren(zkBaseDir + "/conductors", false);
 		if(list.size() == 0){
 			logger.error("No active conductor found on zk:{}", zkIp);
 			System.exit(1);
 		}
 		String[] nodes = list.toArray(new String[list.size()]);
 		Arrays.sort(nodes);
-		String leader = new String(zk.getData("/s5/conductors/" + nodes[0], true, null));
+		String leader = new String(zk.getData(zkBaseDir + "/conductors/" + nodes[0], true, null));
 		logger.info("Get leader conductor:{}", leader);
 		return leader;
 	}
-
+	static void cmd_get_pfc(String[] args, Options options) throws Exception {
+		CommandLineParser cp = new DefaultParser();
+		CommandLine cmd;
+		cmd = cp.parse(options, args);
+		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+		Config cfg = new Config(cfgPath);
+		String leader = getLeaderIp(cfg);
+		System.out.println(leader);
+	}
 }
