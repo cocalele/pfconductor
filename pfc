@@ -3,3 +3,4 @@
 #java -classpath ./out/production/jconductor:./lib/* com.netbric.s5.conductor.Main -c /etc/pureflash/s5.conf
 JCROOT=/root/v2/jconductor
 java -classpath $JCROOT/out/production/jconductor:$JCROOT/lib/*  -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat="[yyyy/MM/dd H:mm:ss.SSS]" com.netbric.s5.conductor.Main -c /etc/pureflash/pf.conf
+

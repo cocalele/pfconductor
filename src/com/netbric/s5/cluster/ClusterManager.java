@@ -111,24 +111,7 @@ public class ClusterManager
 		}
 	}
 
-	/**
-	 * register as a store node
-	 * 
-	 * 在zookeeper的/s5/stores/目录下创建EPHEMERAL节点，节点的名字为自己的管理IP。
-	 * 
-	 * @param managmentIp
-	 */
-	public static void registerAsStore(String managmentIp)
-	{
-		try
-		{
-			zk.create(zkBaseDir + "/stores", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-		}
-		catch (KeeperException | InterruptedException e)
-		{
-			logger.error("Interrupted or Zookeerper Exception:" + e);
-		}
-	}
+
 
 	public static void updateStoresFromZk()
 	{

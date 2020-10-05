@@ -1,6 +1,5 @@
 package com.netbric.s5.conductor.rpc;
 
-import com.netbric.s5.conductor.RestfulReply;
 import com.netbric.s5.orm.StoreNode;
 
 import java.util.List;

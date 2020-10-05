@@ -1,30 +1,16 @@
 package com.netbric.s5.cli;
 import com.bethecoder.ascii_table.ASCIITable;
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.netbric.s5.cluster.ClusterManager;
+import com.netbric.s5.cluster.ZkHelper;
 import com.netbric.s5.conductor.*;
-import com.netbric.s5.conductor.rpc.CreateVolumeReply;
-import com.netbric.s5.conductor.rpc.ListDiskReply;
-import com.netbric.s5.conductor.rpc.ListStoreReply;
-import com.netbric.s5.conductor.rpc.ListVolumeReply;
+import com.netbric.s5.conductor.rpc.*;
 import org.apache.commons.cli.*;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
-import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
 
 public class CliMain
 {
@@ -103,7 +89,7 @@ public class CliMain
 
 				case "get_leader_conductor":
 				{
-					String leader = getLeaderIp(cfg);
+					String leader = ZkHelper.getLeaderIp(cfg);
 					System.out.println(leader);
 					break;
 				}
@@ -117,27 +103,9 @@ public class CliMain
 					String volumeName = cmd.getOptionValue('v');
 					long size = parseNumber(cmd.getOptionValue('s'));
 					long rep_num = parseNumber(cmd.getOptionValue('r', "1"));
-					String leader = getLeaderIp(cfg);
-					GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-					Gson gson = builder.create();
 
-
-					org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-					client.start();
-					String url = String.format("http://%s:49180/s5c/?op=create_volume&name=%s&size=%d&rep_cnt=%d",
-							leader, URLEncoder.encode(volumeName, StandardCharsets.UTF_8.toString()), size, rep_num);
-					logger.info("Send request:{}", url);
-					ContentResponse response = client.newRequest(url)
-							.method(org.eclipse.jetty.http.HttpMethod.GET)
-							.send();
-					logger.info("Get response:{}", response.getContentAsString());
-					if(response.getStatus() < 200 || response.getStatus() >= 300)
-					{
-						throw new IOException(String.format("Failed to create_volume:%s, HTTP status:%d, reason:%s",
-								volumeName, response.getStatus(), response.getReason()));
-					}
-					CreateVolumeReply r = gson.fromJson(new String(response.getContent()), CreateVolumeReply.class);
-					client.stop();
+					CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_volume", CreateVolumeReply.class, "name", volumeName,
+							"size", size, "rep_cnt", rep_num);
 					if(r.retCode == RetCode.OK)
 						logger.info("Succeed create_volume:{}", volumeName);
 					else
@@ -161,8 +129,14 @@ public class CliMain
 				case "list_disk":
 					cmd_list_disk(args, options);
 					break;
+				case "create_snapshot":
+					cmd_create_snapshot(args, options);
+					break;
 				case "get_pfc":
 					cmd_get_pfc(args, options);
+					break;
+				case "get_conn_str":
+					cmd_get_conn_str(args, options);
 					break;
 				default:
 				{
@@ -186,36 +160,24 @@ public class CliMain
 		cmd = cp.parse(options, args);
 		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 		Config cfg = new Config(cfgPath);
-		String leader = getLeaderIp(cfg);
-		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-		Gson gson = builder.create();
 
-		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-		client.start();
-		String url = String.format("http://%s:49180/s5c/?op=list_volume", leader);
-		logger.info("Send request:{}", url);
-		ContentResponse response = client.newRequest(url)
-				.method(org.eclipse.jetty.http.HttpMethod.GET)
-				.send();
-		logger.info("Get response:{}", response.getContentAsString());
-		if(response.getStatus() < 200 || response.getStatus() >= 300)
-		{
-			throw new IOException(String.format("Failed to list_volume, HTTP status:%d, reason:%s",
-					response.getStatus(), response.getReason()));
-		}
-		ListVolumeReply r = gson.fromJson(new String(response.getContent()), ListVolumeReply.class);
-		client.stop();
-		if(r.retCode == RetCode.OK)
+	    ListVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "list_volume", ListVolumeReply.class);
+	    if(r.retCode == RetCode.OK)
 			logger.info("Succeed list_volume");
 		else
 			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
 		String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
 
+	    System.out.printf("%d volumes returned.\n", r.volumes.length);
+		if(r.volumes.length == 0)
+		{
+			return;
+		}
 		String[][] data = new String[r.volumes.length][];
 		for(int i=0;i<r.volumes.length;i++) {
 				data[i] = new String[]{ Long.toString(r.volumes[i].id), r.volumes[i].name, Long.toString(r.volumes[i].size),
 						Integer.toString(r.volumes[i].rep_count), r.volumes[i].status };
-		};
+		}
 		ASCIITable.getInstance().printTable(header, data);
 
 	}
@@ -225,27 +187,10 @@ public class CliMain
 		cmd = cp.parse(options, args);
 		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 		Config cfg = new Config(cfgPath);
-		String leader = getLeaderIp(cfg);
-		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-		Gson gson = builder.create();
 
-		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-		client.start();
-		String url = String.format("http://%s:49180/s5c/?op=list_store", leader);
-		logger.info("Send request:{}", url);
-		ContentResponse response = client.newRequest(url)
-				.method(org.eclipse.jetty.http.HttpMethod.GET)
-				.send();
-		logger.info("Get response:{}", response.getContentAsString());
-		if(response.getStatus() < 200 || response.getStatus() >= 300)
-		{
-			throw new IOException(String.format("Failed to list_store, HTTP status:%d, reason:%s",
-					response.getStatus(), response.getReason()));
-		}
-		ListStoreReply r = gson.fromJson(new String(response.getContent()), ListStoreReply.class);
-		client.stop();
+		ListStoreReply r = SimpleHttpRpc.invokeConductor(cfg, "list_store", ListStoreReply.class);
 		if(r.retCode == RetCode.OK)
-			logger.info("Succeed list_volume");
+			logger.info("Succeed list_store");
 		else
 			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
 		String [] header = { "Id", "Management IP", "Status"};
@@ -253,7 +198,7 @@ public class CliMain
 		String[][] data = new String[r.storeNodes.size()][];
 		for(int i=0;i<r.storeNodes.size();i++) {
 			data[i] = new String[]{ Long.toString(r.storeNodes.get(i).id), r.storeNodes.get(i).mngtIp, r.storeNodes.get(i).status };
-		};
+		}
 		ASCIITable.getInstance().printTable(header, data);
 
 	}
@@ -263,61 +208,38 @@ public class CliMain
 		cmd = cp.parse(options, args);
 		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 		Config cfg = new Config(cfgPath);
-		String leader = getLeaderIp(cfg);
-		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-		Gson gson = builder.create();
 
-		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-		client.start();
-		String url = String.format("http://%s:49180/s5c/?op=list_disk", leader);
-		logger.info("Send request:{}", url);
-		ContentResponse response = client.newRequest(url)
-				.method(org.eclipse.jetty.http.HttpMethod.GET)
-				.send();
-		logger.info("Get response:{}", response.getContentAsString());
-		if(response.getStatus() < 200 || response.getStatus() >= 300)
-		{
-			throw new IOException(String.format("Failed to list_store, HTTP status:%d, reason:%s",
-					response.getStatus(), response.getReason()));
-		}
-		ListDiskReply r = gson.fromJson(new String(response.getContent()), ListDiskReply.class);
-		client.stop();
+		ListDiskReply r = SimpleHttpRpc.invokeConductor(cfg, "list_disk",  ListDiskReply.class);
 		if(r.retCode == RetCode.OK)
-			logger.info("Succeed list_volume");
+			logger.info("Succeed list_disk");
 		else
-			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
+			throw new IOException(String.format("Failed to list_disk , code:%d, reason:%s", r.retCode, r.reason));
 		String [] header = { "Store ID", "uuid",  "Status"};
 
 		String[][] data = new String[r.trays.size()][];
 		for(int i=0;i<r.trays.size();i++) {
 			data[i] = new String[]{ Long.toString(r.trays.get(i).store_id), r.trays.get(i).uuid, r.trays.get(i).status };
-		};
+		}
 		ASCIITable.getInstance().printTable(header, data);
 
 	}
-	private static String getLeaderIp(Config cfg) throws ConfigException, IOException, KeeperException, InterruptedException {
-		String zkIp = cfg.getString("zookeeper", "ip", null, true);
-		if(zkIp == null)
-		{
-			System.err.println("zookeeper ip not specified in config file");
-			System.exit(1);
-		}
-		ZooKeeper zk = new ZooKeeper(zkIp, 50000, new Watcher(){
-			@Override
-			public void process(WatchedEvent event) {
-				logger.info("ZK event:{}", event.toString());
-			}
-		});
-		List<String> list = zk.getChildren(zkBaseDir + "/conductors", false);
-		if(list.size() == 0){
-			logger.error("No active conductor found on zk:{}", zkIp);
-			System.exit(1);
-		}
-		String[] nodes = list.toArray(new String[list.size()]);
-		Arrays.sort(nodes);
-		String leader = new String(zk.getData(zkBaseDir + "/conductors/" + nodes[0], true, null));
-		logger.info("Get leader conductor:{}", leader);
-		return leader;
+	static void cmd_create_snapshot(String[] args, Options options) throws Exception {
+		options.addOption(buildOption("v", "volume_name", true, true, "Volume name to create snapshot"));
+		options.addOption(buildOption("n", "snapshot_name", true, true, "Snapshot name to create"));
+		CommandLineParser cp = new DefaultParser();
+		CommandLine cmd;
+		cmd = cp.parse(options, args);
+		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+		String volName = cmd.getOptionValue('v');
+		String snapName = cmd.getOptionValue('n');
+		Config cfg = new Config(cfgPath);
+
+		RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "create_snapshot",  RestfulReply.class,
+				"volume_name", volName, "snapshot_name", snapName);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed create_snapshot");
+		else
+			throw new IOException(String.format("Failed to create_snapshot , code:%d, reason:%s", r.retCode, r.reason));
 	}
 	static void cmd_get_pfc(String[] args, Options options) throws Exception {
 		CommandLineParser cp = new DefaultParser();
@@ -325,7 +247,20 @@ public class CliMain
 		cmd = cp.parse(options, args);
 		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
 		Config cfg = new Config(cfgPath);
-		String leader = getLeaderIp(cfg);
+		String leader = ZkHelper.getLeaderIp(cfg);
 		System.out.println(leader);
+	}
+
+	static void cmd_get_conn_str(String[] args, Options options) throws Exception {
+		CommandLineParser cp = new DefaultParser();
+		CommandLine cmd;
+		cmd = cp.parse(options, args);
+		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+		Config cfg = new Config(cfgPath);
+		System.out.printf("%s %s %s %s\n",
+			cfg.getString("db", "ip", null, true),
+			cfg.getString("db", "db_name", null, true),
+			cfg.getString("db", "user", null, true),
+			cfg.getString("db", "pass", null, true));
 	}
 }

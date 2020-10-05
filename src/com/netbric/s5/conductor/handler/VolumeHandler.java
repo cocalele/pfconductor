@@ -1,12 +1,14 @@
 package com.netbric.s5.conductor.handler;
 
-import com.dieselpoint.norm.Query;
 import com.dieselpoint.norm.Transaction;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.conductor.*;
 import com.netbric.s5.conductor.rpc.CreateVolumeReply;
+import com.netbric.s5.conductor.rpc.RestfulReply;
+import com.netbric.s5.conductor.rpc.RetCode;
+import com.netbric.s5.conductor.rpc.SimpleHttpRpc;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -267,6 +269,7 @@ public class VolumeHandler
 			v.cbs = t.iops * 2;
 			v.tenant_id = (int)t.id;
 			v.status = Status.OK;
+			v.snap_seq = 1;
 			tray_ids[0] = Utils.getParamAsString(request, "tray_0", null);
 			tray_ids[1] = Utils.getParamAsString(request, "tray_1", null);
 			tray_ids[2] = Utils.getParamAsString(request, "tray_2", null);
@@ -444,7 +447,7 @@ public class VolumeHandler
 		int t_idx = 0;
 		try
 		{
-			tenant_name = Utils.getParamAsString(request, "tenant_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			if (tenant == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
@@ -560,21 +563,19 @@ public class VolumeHandler
 	{
 
 		String op = request.getParameter("op");
-		String name = null;
+		String tenant_name = null;
 		int limit = 0;
-		name = Utils.getParamAsString(request, "by_tenant", "tenant_default");
-		Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", name).first(Tenant.class);
+		tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+		Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 		if (t == null)
-			return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + name);
+			return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
 
 		limit = Utils.getParamAsInt(request, "limit", 20);
 
-		int tenant_idx = S5Database.getInstance().sql("select id from t_tenant where name=?", name)
-				.first(Integer.class);
-		Query query = S5Database.getInstance().where("tenant_id=?", tenant_idx);
+		int tenant_idx = t.id;
 		String vol_name = Utils.getParamAsString(request, "name", "");
 		List<Volume> volumes;
-		if(name != null && name.length() > 0) {
+		if(vol_name != null && vol_name.length() > 0) {
 			volumes = S5Database.getInstance()
 					.sql("select * from t_volume where tenant_id=? and name=?", tenant_idx, vol_name).results(Volume.class);
 		}else {
@@ -718,10 +719,13 @@ public class VolumeHandler
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
+		String snapshot_name;
+		Snapshot snapshot;
 		long volumeId;
 		try {
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
 			boolean need_reprepare;
 			do {
 				need_reprepare = false;
@@ -753,7 +757,107 @@ public class VolumeHandler
 		} catch (InvalidParamException | StateException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
-		return getVolumeInfoForClient(volumeId);
+
+		OpenVolumeReply r = getVolumeInfoForClient(volumeId);
+		if(snapshot_name!=null) {
+			snapshot = S5Database.getInstance().where("volume_id=? and name=?", volumeId, snapshot_name).first(Snapshot.class);
+			r.snap_seq = (int)snapshot.snap_seq;
+		} else {
+			r.snap_seq=-1;
+		}
+		return r;
 	}
 
+	public RestfulReply createSnapshot(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+		String snap_name;
+		long volumeId;
+		Transaction t = null;
+		Volume v = null;
+		Snapshot snap = null;
+		try {
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+			snap_name = Utils.getParamAsString(request, "snapshot_name");
+			v = Volume.fromName(tenant_name, volume_name);
+			if(v == null)
+				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
+			snap = Snapshot.fromName(tenant_name, volume_name, snap_name);
+			if(snap != null)
+				throw new InvalidParamException(String.format("Snapshot %s already exists", snap_name));
+
+			t = S5Database.getInstance().startTransaction();
+			v = S5Database.getInstance().sql("select * from t_volume where id=? for update", v.id).transaction(t).first(Volume.class);//lock db
+			snap = new Snapshot();
+			snap.name = snap_name;
+			snap.size = v.size;
+			snap.volume_id = v.id;
+			snap.snap_seq = v.snap_seq;
+			S5Database.getInstance().transaction(t).insert(snap);
+			S5Database.getInstance().transaction(t).sql("update t_volume set snap_seq=snap_seq+1 where id=?", v.id)
+				.execute();
+			t.commit(); //commit change to snap_seq, even later push snap_seq tot store node failed, we waste a snap_seq number only,
+			            //this snap_seq number will never be reused.
+		} catch (InvalidParamException e1) {
+			if(t != null)
+				t.rollback();;
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+		Volume v2 = Volume.fromId(v.id);//now get new meta_ver after snapshot
+		boolean updateFailed = false;
+		List<StoreNode> nodes = S5Database.getInstance()
+				.sql("select * from t_store where id in (select distinct store_id from t_replica where volume_id=? and status=?)",
+						v.id, Status.OK)
+				.results(StoreNode.class);
+		for(StoreNode n : nodes) {
+			try {
+				SimpleHttpRpc.invokeStore(n.mngtIp, "set_snap_seq", RestfulReply.class, "volume_id", v2.id, "snap_seq", v2.snap_seq);
+			}
+			catch(Exception e){
+				updateFailed = true;
+				updateReplicaStatusToError(n.id, v2.id, String.format("push snap_seq to store:%d fail", n.id));
+				logger.error("Failed update snap_seq on store:{}({}), ", n.id, n.mngtIp);
+			}
+		}
+		if(updateFailed) {
+			incrVolumeMetaver(v2, true, "create snapshot failed");
+		}
+		return new RestfulReply(op);
+	}
+
+	void updateReplicaStatusToError(int storeId, long volumeId, String reason)
+	{
+		logger.error("Update replicas to ERROR on store:{} of volume:{}, for:{}", storeId, volumeId, reason);
+		S5Database.getInstance().sql("update t_replica set status=? where volume_id=? and store_id=?",
+				Status.ERROR, volumeId, storeId).execute();
+
+	}
+
+	void incrVolumeMetaver(Volume v, boolean pushToStore, String reason)
+	{
+		S5Database.getInstance().sql("update t_volume set meta_ver=meta_ver+1 where id=?", v.id)
+				.execute();
+		Volume v2 = Volume.fromId(v.id);
+		logger.warn("increase volume:{} metaver from {} to {}, for:{}",v.name, v.meta_ver, v2.meta_ver, reason);
+		if(pushToStore){
+			List<StoreNode> nodes = S5Database.getInstance()
+					.sql("select * from t_store where id in (select distinct store_id from t_replica where volume_id=? and status=?)",
+							v.id, Status.OK)
+					.results(StoreNode.class);
+			for(StoreNode n : nodes) {
+				try {
+					SimpleHttpRpc.invokeStore(n.mngtIp, "set_meta_ver", RestfulReply.class, "volume_id", v2.id, "meta_ver", v2.meta_ver);
+				}
+				catch(Exception e){
+					logger.error("Failed to push meta_ver to store:{}, for:{}", n.mngtIp, e);
+					updateReplicaStatusToError(n.id, v2.id, String.format("push meta_ver to store:%d fail", n.id));
+					incrVolumeMetaver(v2, pushToStore, String.format("push meta_ver to store:%d fail", n.id));
+				}
+			}
+		}
+	}
 }
+

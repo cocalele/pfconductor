@@ -1,45 +1,34 @@
 package com.netbric.s5.conductor;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import org.apache.commons.exec.CommandLine;
-import org.apache.commons.exec.DefaultExecutor;
-import org.apache.commons.exec.ExecuteException;
+import com.netbric.s5.conductor.handler.StoreHandler;
+import com.netbric.s5.conductor.handler.TenantHandler;
+import com.netbric.s5.conductor.handler.VolumeHandler;
+import com.netbric.s5.conductor.rpc.RestfulReply;
+import com.netbric.s5.conductor.rpc.RetCode;
+import com.netbric.s5.orm.S5Database;
+import com.netbric.s5.orm.Volume;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.netbric.s5.orm.StoreNode;
-import com.netbric.s5.orm.Tenant;
-import com.netbric.s5.conductor.handler.StoreHandler;
-import com.netbric.s5.conductor.handler.TenantHandler;
-import com.netbric.s5.conductor.handler.VolumeHandler;
-import com.netbric.s5.orm.S5Database;
-import com.netbric.s5.orm.Volume;
-
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
-//public class S5RestfulHandler implements HttpHandler
+
 public class S5RestfulHandler extends AbstractHandler
 {
 	static final Logger logger = LoggerFactory.getLogger(S5RestfulHandler.class);
 	VolumeHandler volumeHandler = new VolumeHandler();
 	TenantHandler tenantHandler = new TenantHandler();
 	StoreHandler storenodeHandler = new StoreHandler();
+	SnapshotManager snapshotHandler = new SnapshotManager();
 
 
 	private RestfulReply unexport_volume(HttpServletRequest request, HttpServletResponse response) throws IOException
@@ -99,12 +88,13 @@ public class S5RestfulHandler extends AbstractHandler
 
 	}
 
-	public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
+	public synchronized void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 			throws IOException
 	{
 		response.setContentType("text/json; charset=utf-8");
 		response.setStatus(HttpServletResponse.SC_OK);
 		String op = request.getParameter("op");
+		//String fmt = Utils.getParamAsString(request, "fmt", "json");
 		logger.debug("API called: op={}", op);
 		RestfulReply reply;
 		try
@@ -143,6 +133,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.unexpose_volume(request, response);
 			else if ("open_volume".equals(op))
 				reply = volumeHandler.open_volume(request, response);
+			else if("create_snapshot".equals(op))
+				reply = volumeHandler.createSnapshot(request, response);
 			else
 			{
 				reply = new RestfulReply(op, RetCode.INVALID_OP, "Invalid op:" + op);

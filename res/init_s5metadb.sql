@@ -39,6 +39,7 @@ drop table  if exists t_tray;
 drop table  if exists t_task_journal;
 drop table  if exists t_seq_gen;
 drop table  if exists t_store;
+drop table  if exists t_snapshot;
 -- 'auth' column of 'tenant' describes access permission level of current tenant, 0 indicates normal user, 1 indicates administrator, -1 invalid tenant
 -- car id from 0 ~ 63 is reserved for special usage, and will not be set to rge.
 -- 
@@ -143,7 +144,14 @@ create table t_replica(
 	tray_uuid	varchar(64) not null,
 	status_time datetime not null default current_timestamp on update current_timestamp,
 	status varchar(16));
-
+create table t_snapshot(
+    id bigint primary key AUTO_INCREMENT,
+    volume_id bigint not null,
+    snap_seq integer not null,
+    name varchar(96) not null,
+    size bigint not null, -- size of volume when snapshot created
+    created datetime not null default current_timestamp
+);
 create view v_store_alloc_size as  select store_id, sum(size) as alloc_size from t_volume, t_replica where t_volume.id=t_replica.volume_id group by t_replica.store_id;
 create view v_store_total_size as  select store_id, sum(t.raw_capacity) as total_size from t_tray as t where t.status="OK" group by t.store_id;
 create view v_store_free_size as select t.store_id, t.total_size, COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size 
