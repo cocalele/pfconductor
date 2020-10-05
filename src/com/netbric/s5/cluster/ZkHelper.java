@@ -1,8 +1,12 @@
 package com.netbric.s5.cluster;
+import com.netbric.s5.conductor.Config;
+import com.netbric.s5.conductor.ConfigException;
 import org.apache.zookeeper.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -106,5 +110,30 @@ public class ZkHelper {
 		}).start();
 
 	}
-
+	public static String getLeaderIp(Config cfg) throws ConfigException, IOException, KeeperException, InterruptedException {
+		String zkIp = cfg.getString("zookeeper", "ip", null, true);
+		if(zkIp == null)
+		{
+			System.err.println("zookeeper ip not specified in config file");
+			System.exit(1);
+		}
+		String clusterName = cfg.getString("cluster", "name", ClusterManager.defaultClusterName, false);
+		String zkBaseDir = "/pureflash/"+clusterName;
+		ZooKeeper zk = new ZooKeeper(zkIp, 50000, new Watcher(){
+			@Override
+			public void process(WatchedEvent event) {
+				logger.info("ZK event:{}", event.toString());
+			}
+		});
+		List<String> list = zk.getChildren(zkBaseDir + "/conductors", false);
+		if(list.size() == 0){
+			logger.error("No active conductor found on zk:{}", zkIp);
+			System.exit(1);
+		}
+		String[] nodes = list.toArray(new String[list.size()]);
+		Arrays.sort(nodes);
+		String leader = new String(zk.getData(zkBaseDir + "/conductors/" + nodes[0], true, null));
+		logger.info("Get leader conductor:{}", leader);
+		return leader;
+	}
 }

@@ -11,6 +11,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -102,7 +103,16 @@ public class Main
 			ContextHandler context = new ContextHandler();
 			context.setContextPath("/s5c");
 			context.setHandler(new S5RestfulHandler());
-			srv.setHandler(context);
+
+			ContextHandlerCollection hc = new ContextHandlerCollection();
+			hc.addHandler(context);
+
+			ContextHandler dbgCtx = new ContextHandler();
+			dbgCtx.setContextPath("/debug");
+			dbgCtx.setHandler(new DebugHandler());
+			hc.addHandler(dbgCtx);
+			srv.setHandler(hc);
+
 			srv.start();
 			logger.info("HTTP started on port 49180");
 		}
