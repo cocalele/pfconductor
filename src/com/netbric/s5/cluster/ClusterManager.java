@@ -179,6 +179,7 @@ public class ClusterManager
 				tr.store_id =store_id;
 				tr.device = new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/devname", false, null));
 				tr.raw_capacity = Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
+				tr.object_size =  Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/object_size", false, null)));
 				zkHelper.watchNode(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/online", new ZkHelper.NodeChangeCallback() {
 					@Override
 					void onNodeCreate(String childPath) {

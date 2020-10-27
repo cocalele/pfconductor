@@ -4,12 +4,10 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import com.netbric.s5.orm.S5Database;
-import org.apache.commons.cli.CommandLine;
 
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.Namespace;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.slf4j.Logger;
@@ -31,56 +29,38 @@ public class Main
 	}
 	public static void main(String[] args)
 	{
-		Options options = new Options();
-
-		// add t option
-		options.addOption("c", true, "s5 config file path");
-		options.addOption("i", true, "conductor node index");
-		options.addOption("h", "help", false, "conductor node index");
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		try
-		{
-			cmd = cp.parse(options, args);
-		}
-		catch (ParseException e1)
-		{
-
-			e1.printStackTrace();
-			System.exit(1);
-			return;
-		}
-		if(cmd.hasOption("h"))
-		{
-			printUsage();
-			System.exit(1);
-		}
-
-		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE");
-
-		// zookeeper config file
-		String cfgPath = cmd.getOptionValue("c");
-		if(cfgPath == null)
-		{
-			cfgPath = "/etc/pureflash/pfc.conf";
-			logger.warn("-c not specified, use {}", cfgPath);
-		}
-		Config cfg = new Config(cfgPath);
-
-		InetAddress ia = null;
-		try
-		{
-			ia = InetAddress.getLocalHost();
-		}
-		catch (UnknownHostException e1)
-		{
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		String managmentIp = ia.getHostAddress();
+		ArgumentParser parser = ArgumentParsers.newFor("pfc").build()
+				.description("Pureflash conductor");
+		parser.addArgument("-c")
+				.metavar("conf")
+				.setDefault("/etc/pureflash/pfc.conf")
+				.help("config file path");
+//		parser.addArgument("-i").type(Integer.class)
+//				.metavar("node_idx")
+//				.required(true)
+//				.help("conductor node index");
 
 		try
 		{
+			Namespace cmd = parser.parseArgs(args);
+			String cfgPath = cmd.getString("c");
+			System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE");
+			logger.info("use config file: {}", cfgPath);
+			Config cfg = new Config(cfgPath);
+
+			InetAddress ia = null;
+			try
+			{
+				ia = InetAddress.getLocalHost();
+			}
+			catch (UnknownHostException e1)
+			{
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			String managmentIp = ia.getHostAddress();
+
+
 			managmentIp = cfg.getString("conductor" , "mngt_ip", managmentIp);
 			String zkIp = cfg.getString("zookeeper", "ip", null, true);
 			if(zkIp == null)
@@ -119,25 +99,8 @@ public class Main
 		catch (Exception e1)
 		{
 			e1.printStackTrace();
-			logger.error("Failed to start jconductor:{}", e1);
+			logger.error("Failed to run jconductor:{}", e1);
 		}
-
-        // Can be accessed using http://localhost:8080/hello
-
-
-//        try
-//        {
-//            HttpServer server = HttpServer.create(new InetSocketAddress(49180), 0);
-//            server.createContext("/s5c", new S5RestfulHandler() );
-//            server.setExecutor(null); // creates a default executor
-//            server.start();
-//        }
-//		catch (Exception e)
-//		{
-//
-//			e.printStackTrace();
-//			logger.error("Failt to start jetty server:", e);
-//		}
 	}
 
 }

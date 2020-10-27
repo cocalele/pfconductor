@@ -13,7 +13,7 @@ public class Tray
 	public String status; // value can be on of STATE_XXX
 	public long raw_capacity;
 	public int store_id;
-
+	public long object_size;
 
 	public Tray()
 	{

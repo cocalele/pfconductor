@@ -4,9 +4,12 @@ import com.netbric.s5.cluster.ClusterManager;
 import com.netbric.s5.cluster.ZkHelper;
 import com.netbric.s5.conductor.*;
 import com.netbric.s5.conductor.rpc.*;
-import org.apache.commons.cli.*;
+import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.inf.ArgumentParser;
+import net.sourceforge.argparse4j.inf.Namespace;
+import net.sourceforge.argparse4j.inf.Subparser;
+import net.sourceforge.argparse4j.inf.Subparsers;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +23,7 @@ public class CliMain
 	static String zkBaseDir;
 	static String[][] validCmds = {
 			{"get_pfc", "", "Get the active conductor IP"},
-			{"create_volume", " -v <vol_namej> -s <size> [-r <replica_num>]", "create a volume"},
+			{"create_volume", " -v <vol_name> -s <size> [-r <replica_num>]", "create a volume"},
 			{"list_volume", "", "list volumes"}
 	};
 	private static void printUsage()
@@ -30,13 +33,6 @@ public class CliMain
 		for(String[] cmd : validCmds)
 			System.out.printf("       %s %s\n\t%s\n", cmd[0], cmd[1], cmd[2]);
 
-	}
-
-	private static Option buildOption(String opt, String longOpt, boolean hasArg, boolean required, String description)
-	{
-		Option.Builder b = Option.builder(opt);
-		b.longOpt(longOpt).hasArg(hasArg).desc(description).required(required);
-		return b.build();
 	}
 
 	private static long parseNumber(String str)
@@ -60,89 +56,123 @@ public class CliMain
 		}
 		return Long.parseLong(str);
 	}
+	interface CmdRunner {
+		void run(Namespace cmd, Config cfg) throws Exception;
+	}
 	public static void main(String[] args)
 	{
-		Options options = new Options();
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-
-		// add t option
-		options.addOption("c", true, "s5 config file path, default:"+defaultCfgPath);
-		System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
-
+//		Options options = new Options();
+//		CommandLineParser cp = new DefaultParser();
+//		CommandLine cmd;
 		try
 		{
-			String cmd_verb = args[0];
-			if(cmd_verb.equals("help") || cmd_verb.equals("-h") || cmd_verb.equals("--help"))
-			{
-				printUsage();
-				System.exit(1);
-			}
-			args = ArrayUtils.remove(args, 0);
-			cmd = cp.parse(options, args);
-			String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
+			ArgumentParser cp = ArgumentParsers.newFor("pfcli").build()
+					.description("PureFlash command line tool");
+			cp.addArgument("-c").help("pfs config file path").setDefault(defaultCfgPath);
+			Subparsers sps = cp.addSubparsers().dest("cmd_verb");
+//			ArrayList<String> remainArgs = new ArrayList<>();
+//			Namespace ns = cp.parseKnownArgs(args, remainArgs);
+
+			System.setProperty(org.slf4j.impl.SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "ERROR");
+
+
+
+			Subparser sp = sps.addParser("get_leader_conductor");
+			sp.description("Get leader pfconductor IP");
+
+			sp = sps.addParser("create_volume");
+			sp.description("Create volume");
+			sp.addArgument("-v").help("Volume name to create").required(true).metavar("volume_name");
+			sp.addArgument("-s").help("Volume size, unit like GB is accepted").required(true).metavar("size");
+			sp.addArgument("-r", "--rep_num").help("Replica number").type(Integer.class).setDefault(1).metavar("rep_num");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_create_volume(cmd, cfg);
+				}
+			});
+
+			sp = sps.addParser("delete_volume");
+			sp.description("Delete volume")
+				.addArgument("-v").help("Volume name to delete").required(true).metavar("volume_name");
+			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
+					String volumeName = cmd.getString("v");
+
+					CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_volume", CreateVolumeReply.class, "name", volumeName);
+					if(r.retCode == RetCode.OK)
+						logger.info("Succeed delete volume:{}", volumeName);
+					else
+						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
+				});
+
+			sp=sps.addParser("list_volume");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_volume(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("list_store");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_store(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("list_disk");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_disk(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("create_snapshot");
+			sp.addArgument("-v").help("Volume name to create snapshot").required(true).metavar("volume_name");
+			sp.addArgument("-n").help("Name of snapshot").required(true).metavar("snap_name");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_create_snapshot(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("get_pfc");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_get_pfc(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("get_conn_str");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_get_conn_str(cmd, cfg);
+				}
+			});
+
+			Namespace cmd = cp.parseArgs(args);
+			String cfgPath = cmd.getString("c");
 			Config cfg = new Config(cfgPath);
 			String clusterName = cfg.getString("cluster", "name", ClusterManager.defaultClusterName, false);
 			zkBaseDir = "/pureflash/"+clusterName;
+
+
+			String cmd_verb = cmd.getString("cmd_verb");
 			switch(cmd_verb)
 			{
-
 				case "get_leader_conductor":
 				{
 					String leader = ZkHelper.getLeaderIp(cfg);
 					System.out.println(leader);
 					break;
 				}
-				case "create_volume":
-				{
-					options.addOption(buildOption("v", "name", true, true, "Volume name to create"));
-					options.addOption(buildOption("s", "size", true, true, "Volume size"));
-					options.addOption(buildOption("r", "rep_num", true, false, "Replica number, default 1"));
-					args = ArrayUtils.remove(args, 0);
-					cmd = cp.parse(options, args);
-					String volumeName = cmd.getOptionValue('v');
-					long size = parseNumber(cmd.getOptionValue('s'));
-					long rep_num = parseNumber(cmd.getOptionValue('r', "1"));
-
-					CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_volume", CreateVolumeReply.class, "name", volumeName,
-							"size", size, "rep_cnt", rep_num);
-					if(r.retCode == RetCode.OK)
-						logger.info("Succeed create_volume:{}", volumeName);
-					else
-						throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
-					String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
-
-					String[][] data = {
-							{ Long.toString(r.id), r.name, Long.toString(r.size), Integer.toString(r.rep_count), r.status },
-
-					};
-					ASCIITable.getInstance().printTable(header, data);
-
-					return;
-				}
-				case "list_volume":
-					cmd_list_volume(args, options);
-					break;
-				case "list_store":
-					cmd_list_store(args, options);
-					break;
-				case "list_disk":
-					cmd_list_disk(args, options);
-					break;
-				case "create_snapshot":
-					cmd_create_snapshot(args, options);
-					break;
-				case "get_pfc":
-					cmd_get_pfc(args, options);
-					break;
-				case "get_conn_str":
-					cmd_get_conn_str(args, options);
-					break;
 				default:
-				{
-					logger.error("Invalid command:{}", cmd_verb);
-					return;
-				}
+					((CmdRunner)cmd.get("__func")).run(cmd, cfg);
 			}
 		}
 		catch (Exception e1)
@@ -154,13 +184,27 @@ public class CliMain
 
     }
 
-    static void cmd_list_volume(String[] args, Options options) throws Exception {
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-		Config cfg = new Config(cfgPath);
+	private static void cmd_create_volume(Namespace cmd, Config cfg) throws Exception {
+		String volumeName = cmd.getString("v");
+		long size = parseNumber(cmd.getString("s"));
+		long rep_num =cmd.getInt("rep_num");
 
+		CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_volume", CreateVolumeReply.class, "name", volumeName,
+				"size", size, "rep_cnt", rep_num);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed create_volume:{}", volumeName);
+		else
+			throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
+		String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
+
+		String[][] data = {
+				{ Long.toString(r.id), r.name, Long.toString(r.size), Integer.toString(r.rep_count), r.status },
+
+		};
+		ASCIITable.getInstance().printTable(header, data);
+	}
+
+	static void cmd_list_volume(Namespace cmd, Config cfg) throws Exception {
 	    ListVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "list_volume", ListVolumeReply.class);
 	    if(r.retCode == RetCode.OK)
 			logger.info("Succeed list_volume");
@@ -181,13 +225,7 @@ public class CliMain
 		ASCIITable.getInstance().printTable(header, data);
 
 	}
-	static void cmd_list_store(String[] args, Options options) throws Exception {
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-		Config cfg = new Config(cfgPath);
-
+	static void cmd_list_store(Namespace cmd, Config cfg) throws Exception {
 		ListStoreReply r = SimpleHttpRpc.invokeConductor(cfg, "list_store", ListStoreReply.class);
 		if(r.retCode == RetCode.OK)
 			logger.info("Succeed list_store");
@@ -202,13 +240,7 @@ public class CliMain
 		ASCIITable.getInstance().printTable(header, data);
 
 	}
-	static void cmd_list_disk(String[] args, Options options) throws Exception {
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-		Config cfg = new Config(cfgPath);
-
+	static void cmd_list_disk(Namespace cmd, Config cfg) throws Exception {
 		ListDiskReply r = SimpleHttpRpc.invokeConductor(cfg, "list_disk",  ListDiskReply.class);
 		if(r.retCode == RetCode.OK)
 			logger.info("Succeed list_disk");
@@ -223,16 +255,9 @@ public class CliMain
 		ASCIITable.getInstance().printTable(header, data);
 
 	}
-	static void cmd_create_snapshot(String[] args, Options options) throws Exception {
-		options.addOption(buildOption("v", "volume_name", true, true, "Volume name to create snapshot"));
-		options.addOption(buildOption("n", "snapshot_name", true, true, "Snapshot name to create"));
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-		String volName = cmd.getOptionValue('v');
-		String snapName = cmd.getOptionValue('n');
-		Config cfg = new Config(cfgPath);
+	static void cmd_create_snapshot(Namespace cmd, Config cfg) throws Exception {
+		String volName = cmd.getString("v");
+		String snapName = cmd.getString("n");
 
 		RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "create_snapshot",  RestfulReply.class,
 				"volume_name", volName, "snapshot_name", snapName);
@@ -241,22 +266,13 @@ public class CliMain
 		else
 			throw new IOException(String.format("Failed to create_snapshot , code:%d, reason:%s", r.retCode, r.reason));
 	}
-	static void cmd_get_pfc(String[] args, Options options) throws Exception {
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-		Config cfg = new Config(cfgPath);
+
+	static void cmd_get_pfc(Namespace cmd, Config cfg) throws Exception {
 		String leader = ZkHelper.getLeaderIp(cfg);
 		System.out.println(leader);
 	}
 
-	static void cmd_get_conn_str(String[] args, Options options) throws Exception {
-		CommandLineParser cp = new DefaultParser();
-		CommandLine cmd;
-		cmd = cp.parse(options, args);
-		String cfgPath = cmd.getOptionValue('c', defaultCfgPath);
-		Config cfg = new Config(cfgPath);
+	static void cmd_get_conn_str(Namespace cmd, Config cfg) throws Exception {
 		System.out.printf("%s %s %s %s\n",
 			cfg.getString("db", "ip", null, true),
 			cfg.getString("db", "db_name", null, true),

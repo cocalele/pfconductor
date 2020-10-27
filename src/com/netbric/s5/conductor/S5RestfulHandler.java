@@ -135,6 +135,10 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.open_volume(request, response);
 			else if("create_snapshot".equals(op))
 				reply = volumeHandler.createSnapshot(request, response);
+			else if("recovery_volume".equals(op))
+				reply = volumeHandler.recoveryVolume(request, response);
+			else if("query_task".equals(op))
+				reply = volumeHandler.queryTask(request, response);
 			else
 			{
 				reply = new RestfulReply(op, RetCode.INVALID_OP, "Invalid op:" + op);

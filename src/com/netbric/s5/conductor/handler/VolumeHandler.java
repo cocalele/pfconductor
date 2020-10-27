@@ -5,10 +5,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.conductor.*;
-import com.netbric.s5.conductor.rpc.CreateVolumeReply;
-import com.netbric.s5.conductor.rpc.RestfulReply;
-import com.netbric.s5.conductor.rpc.RetCode;
-import com.netbric.s5.conductor.rpc.SimpleHttpRpc;
+import com.netbric.s5.conductor.rpc.*;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -24,10 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -859,5 +853,54 @@ public class VolumeHandler
 			}
 		}
 	}
-}
 
+	public RestfulReply recoveryVolume(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+
+		Volume v = null;
+
+		try {
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+
+			v = Volume.fromName(tenant_name, volume_name);
+			if(v == null)
+				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
+			Volume finalV = v;
+			BackgroundTaskManager.BackgroundTask t=null;
+
+			t = BackgroundTaskManager.getInstance().initiateTask(
+					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
+					new BackgroundTaskManager.TaskExecutor() {
+						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
+							RecoveyManager.getInstance().recoveryVolume(t);
+						}
+
+					}, v);
+			return new BackgroundTaskReply(op+"_reply", t);
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+	}
+
+
+	public RestfulReply queryTask(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+
+		try {
+			int taskId = Utils.getParamAsInt(request, "task_id");
+
+			BackgroundTaskManager.BackgroundTask t= BackgroundTaskManager.getInstance().taskMap.get(taskId);
+			if(t != null)
+				return new BackgroundTaskReply(op+"_reply", t);
+			else
+				return new RestfulReply(op, RetCode.INVALID_ARG, String.format("No such task:%d", taskId));
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+	}
+}
