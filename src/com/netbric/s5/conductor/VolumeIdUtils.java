@@ -8,6 +8,9 @@ package com.netbric.s5.conductor;
  */
 public class VolumeIdUtils {
 	static public long replicaToVolumeId(long repId) {
-			return repId & 0xffffffffff000000L;
+		return repId & 0xffffffffff000000L;
+	}
+	static public long replicaToShardId(long repId) {
+		return repId & 0xffffffffffffff00L;
 	}
 }

@@ -3,6 +3,7 @@ package com.netbric.s5.conductor;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.netbric.s5.conductor.handler.ErrorHandler;
 import com.netbric.s5.conductor.handler.StoreHandler;
 import com.netbric.s5.conductor.handler.TenantHandler;
 import com.netbric.s5.conductor.handler.VolumeHandler;
@@ -29,7 +30,7 @@ public class S5RestfulHandler extends AbstractHandler
 	TenantHandler tenantHandler = new TenantHandler();
 	StoreHandler storenodeHandler = new StoreHandler();
 	SnapshotManager snapshotHandler = new SnapshotManager();
-
+	ErrorHandler errorHandler = new ErrorHandler();
 
 	private RestfulReply unexport_volume(HttpServletRequest request, HttpServletResponse response) throws IOException
 	{
@@ -99,7 +100,12 @@ public class S5RestfulHandler extends AbstractHandler
 		RestfulReply reply;
 		try
 		{
-			if ("add_store".equals(op))
+			if ("handle_error".equals(op)) {
+				reply = errorHandler.handleError(request, response);
+			}
+			else if ("open_volume".equals(op))
+				reply = volumeHandler.open_volume(request, response);
+			else if ("add_store".equals(op))
 				reply = storenodeHandler.add_storenode(request, response);
 			else if ("delete_store".equals(op))
 				reply = storenodeHandler.delete_storenode(request, response);
@@ -131,8 +137,7 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.expose_volume(request, response);
 			else if ("unexpose_volume".equals(op))
 				reply = volumeHandler.unexpose_volume(request, response);
-			else if ("open_volume".equals(op))
-				reply = volumeHandler.open_volume(request, response);
+
 			else if("create_snapshot".equals(op))
 				reply = volumeHandler.createSnapshot(request, response);
 			else if("recovery_volume".equals(op))

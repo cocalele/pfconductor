@@ -627,7 +627,8 @@ public class VolumeHandler
 		}
 		return arg;
 	}
-	public RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws IOException, InterruptedException, TimeoutException, ExecutionException {
+	public RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
+	{
 		arg.op="prepare_volume";
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
 		Gson gson = builder.create();
@@ -656,7 +657,7 @@ public class VolumeHandler
 				logger.error("Failed to prepare_volume:{} on node:%s, code:%d, reason:{}", arg.volume_name, s.mngtIp, r.retCode, r.reason);
 			return r;
 		} catch (Exception e) {
-			throw new IOException(e);
+			throw e;
 		}
 
 	}
@@ -740,8 +741,8 @@ public class VolumeHandler
 							logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, rply.reason);
 							return rply;
 						}
-					} catch (IOException | InterruptedException | TimeoutException | ExecutionException e) {
-						logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
+					} catch (Exception e) {
+						logger.error("Failed[2] to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
 						markReplicasOnStoreAsError(s.id, arg.volume_id);
 						need_reprepare = true;
 						break;

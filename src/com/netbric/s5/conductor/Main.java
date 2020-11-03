@@ -8,6 +8,7 @@ import com.netbric.s5.orm.S5Database;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
 import org.slf4j.Logger;
@@ -23,10 +24,8 @@ public class Main
 
 	}
 	static final Logger logger = LoggerFactory.getLogger(Main.class);
-	private static void printUsage()
-	{
-		System.out.println("Usage: java com.netbric.s5.conductor -c <s5_config_file>");
-	}
+	private static Server httpServer;
+
 	public static void main(String[] args)
 	{
 		ArgumentParser parser = ArgumentParsers.newFor("pfc").build()
@@ -78,7 +77,7 @@ public class Main
 			ClusterManager.updateStoresFromZk();
 
 			// Start the server
-			org.eclipse.jetty.server.Server srv = new org.eclipse.jetty.server.Server(49180);
+			httpServer = new Server(49180);
 			// Add a single handler on context "/hello"
 			ContextHandler context = new ContextHandler();
 			context.setContextPath("/s5c");
@@ -91,9 +90,9 @@ public class Main
 			dbgCtx.setContextPath("/debug");
 			dbgCtx.setHandler(new DebugHandler());
 			hc.addHandler(dbgCtx);
-			srv.setHandler(hc);
+			httpServer.setHandler(hc);
 
-			srv.start();
+			httpServer.start();
 			logger.info("HTTP started on port 49180");
 		}
 		catch (Exception e1)
@@ -103,4 +102,14 @@ public class Main
 		}
 	}
 
+	public static void suicide()
+	{
+		ClusterManager.unregister();
+		try {
+			httpServer.stop();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		httpServer.destroy();
+	}
 }
