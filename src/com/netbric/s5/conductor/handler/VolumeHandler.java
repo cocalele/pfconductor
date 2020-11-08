@@ -593,8 +593,8 @@ public class VolumeHandler
 				.first(Volume.class);
 		if (vol == null)
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " not exists");
-		if (!vol.status.equals(Status.OK))
-			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be exposed");
+		if (vol.status.equals(Status.ERROR))
+			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be opened");
 
 		List<Shard> shards = S5Database.getInstance().where("volume_id=?", vol.id).results(Shard.class);
 

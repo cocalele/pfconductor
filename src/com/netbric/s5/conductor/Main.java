@@ -107,9 +107,10 @@ public class Main
 		ClusterManager.unregister();
 		try {
 			httpServer.stop();
+			httpServer.destroy();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		httpServer.destroy();
+		System.exit(-1);
 	}
 }
