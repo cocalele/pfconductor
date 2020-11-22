@@ -686,8 +686,10 @@ public class VolumeHandler
 		}
 		logger.info("{} ports found ", portMap.size());
 
-		List<ShardInfoForClient> shards = S5Database.getInstance().sql("select s.status, s.shard_index as 'index', (select group_concat(data_ports order by is_primary desc)"+
-						" from  v_replica_ext where shard_id=s.id and status='OK') as store_ips from t_shard as s where s.volume_id=?", volumeId).results(ShardInfoForClient.class);
+		List<ShardInfoForClient> shards = S5Database.getInstance().sql("select s.status, s.shard_index as 'index'," +
+				" (select group_concat(data_ports order by is_primary desc, status_time asc, replica_index asc)"+
+				" from  v_replica_ext where shard_id=s.id and status='OK') as store_ips from t_shard as s where s.volume_id=?",
+				volumeId).results(ShardInfoForClient.class);
 
 		logger.info("shard cnt:{}", shards.size());
 		for(ShardInfoForClient sd : shards) {

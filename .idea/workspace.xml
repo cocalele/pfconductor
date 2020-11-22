@@ -1,13 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="bcf810b8-7f93-4d10-abbf-0b5b2949a31a" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/rpc/CreateVolumeReply.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/rpc/ErrorReportReply.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jconductor.iml" beforeDir="false" afterPath="$PROJECT_DIR$/jconductor.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jconductor.properties" beforeDir="false" afterPath="$PROJECT_DIR$/jconductor.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jconductor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/jconductor.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/cli/CliMain.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/cli/CliMain.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/res/init_s5metadb.sql" beforeDir="false" afterPath="$PROJECT_DIR$/res/init_s5metadb.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/ErrorHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/ErrorHandler.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -62,9 +78,6 @@
     </expand>
     <select />
   </component>
-  <component name="FavoritesManager">
-    <favorites_list name="jconductor" />
-  </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
       <list>
@@ -111,7 +124,6 @@
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
-    <option name="showExcludedFiles" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
@@ -121,19 +133,29 @@
     <property name="GenerateAntBuildDialog.forceTargetJdk" value="true" />
     <property name="GenerateAntBuildDialog.generateSingleFile" value="true" />
     <property name="GenerateAntBuildDialog.outputFileNameProperty" value="jconductor" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="aspect.path.notification.shown" value="true" />
     <property name="extract.method.default.visibility" value="private" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../java-ascii-table/build.gradle" />
+    <property name="last_directory_selection" value="$PROJECT_DIR$/src/com/netbric/s5/conductor/rpc" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/lib/argparse4j-0.8.1-sources.jar!/" />
     <property name="project.structure.last.edited" value="Libraries" />
     <property name="project.structure.proportion" value="0.15" />
     <property name="project.structure.side.proportion" value="0.2789272" />
-    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
+    <property name="settings.editor.selected.configurable" value="configurable.group.build" />
     <property name="settings.editor.splitter.proportion" value="0.11624551" />
   </component>
-  <component name="RunManager">
+  <component name="RecentsManager">
+    <key name="MoveMembersDialog.RECENTS_KEY">
+      <recent name="com.netbric.s5.cluster.ZkHelper" />
+    </key>
+    <key name="MoveInnerDialog.RECENTS_KEY">
+      <recent name="com.netbric.s5.conductor.rpc" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.jconductor">
     <configuration default="true" type="Applet" factoryName="Applet">
       <option name="HTML_USED" value="false" />
       <option name="WIDTH" value="400" />
@@ -188,6 +210,15 @@
       <option name="PARAMETERS" />
       <option name="WORKING_DIRECTORY" value="$MODULE_DIR$" />
     </configuration>
+    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType">
+      <module name="" />
+      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
+      <option name="PROGRAM_PARAMETERS" />
+      <predefined_log_file enabled="true" id="idea.log" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration default="true" type="executeSpecs" factoryName="Gauge Execution">
       <setting name="environment" value="" />
       <setting name="specsToExecute" value="" />
@@ -201,6 +232,14 @@
       <setting name="rowsRange" value="" />
       <method />
     </configuration>
+    <configuration name="CliMain" type="Application" factoryName="Application" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="com.netbric.s5.cli.CliMain" />
+      <module name="jconductor" />
+      <option name="PROGRAM_PARAMETERS" value="list_volume -c C:\data\workspace\jconductor\s5-win.conf" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration default="true" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="com.netbric.s5.conductor.Main" />
       <option name="PROGRAM_PARAMETERS" value="-c C:\data\workspace2\jconductor\s5-win.conf" />
@@ -210,10 +249,11 @@
       </method>
     </configuration>
     <configuration name="jconductor" type="Application" factoryName="Application">
+      <option name="ALTERNATIVE_JRE_PATH" value="11" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
       <option name="MAIN_CLASS_NAME" value="com.netbric.s5.conductor.Main" />
       <module name="jconductor" />
-      <option name="PROGRAM_PARAMETERS" value="-c C:\data\workspace2\jconductor\s5-win.conf" />
-      <option name="WORKING_DIRECTORY" value="file://$PROJECT_DIR$" />
+      <option name="PROGRAM_PARAMETERS" value="-c C:\data\workspace\jconductor\s5-win.conf" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -235,7 +275,7 @@
       <GradleScriptDebugEnabled>true</GradleScriptDebugEnabled>
       <method v="2" />
     </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType" factoryName="Kotlin script">
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
       <option name="filePath" />
       <option name="vmParameters" />
       <option name="alternativeJrePath" />
@@ -269,28 +309,10 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
-    <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType">
-      <module name="" />
-      <option name="VM_PARAMETERS" value="-Xmx512m -Xms256m -XX:MaxPermSize=250m -ea" />
-      <option name="PROGRAM_PARAMETERS" />
-      <predefined_log_file enabled="true" id="idea.log" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-  </component>
-  <component name="ServiceViewManager">
-    <option name="viewStates">
-      <list>
-        <serviceView>
-          <option name="contentProportion" value="0.33845028" />
-          <treeState>
-            <expand />
-            <select />
-          </treeState>
-        </serviceView>
-      </list>
-    </option>
+    <list>
+      <item itemvalue="Application.CliMain" />
+      <item itemvalue="Application.jconductor" />
+    </list>
   </component>
   <component name="SvnConfiguration">
     <configuration />
@@ -307,6 +329,8 @@
       <workItem from="1579098520995" duration="27348000" />
       <workItem from="1579789556784" duration="1935000" />
       <workItem from="1580139616105" duration="2345000" />
+      <workItem from="1590830225209" duration="36000" />
+      <workItem from="1590842464711" duration="309000" />
     </task>
     <servers />
   </component>
@@ -318,114 +342,86 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State>
-              <option name="COLUMN_ORDER" />
-            </State>
+            <State />
           </value>
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="237" y="146" key="#Project_Structure" timestamp="1586276313318">
-      <screen x="0" y="0" width="2256" height="1440" />
+    <state x="371" y="229" width="650" height="423" key="#Notifications" timestamp="1602774137367">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="151" y="94" key="#Project_Structure/0.0.1440.929@0.0.1440.929" timestamp="1579766448926" />
-    <state x="237" y="146" key="#Project_Structure/0.0.2256.1440@0.0.2256.1440" timestamp="1586276313318" />
-    <state x="551" y="320" key="#com.intellij.debugger.actions.ViewTextAction" timestamp="1579105797107">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="371" y="229" width="650" height="423" key="#Notifications/0.0.1368.882@0.0.1368.882" timestamp="1602774137367" />
+    <state x="165" y="18" key="#Project_Structure" timestamp="1603895460210">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="551" y="320" key="#com.intellij.debugger.actions.ViewTextAction/0.0.1440.929@0.0.1440.929" timestamp="1579105797107" />
-    <state x="176" y="120" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1579103666581">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="165" y="18" key="#Project_Structure/0.0.1368.882@0.0.1368.882" timestamp="1603895460210" />
+    <state x="245" y="84" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1597675759930">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="176" y="120" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1440.929@0.0.1440.929" timestamp="1579103666581" />
-    <state x="846" y="289" key="#com.intellij.ide.util.MemberChooser" timestamp="1586357423240">
-      <screen x="0" y="0" width="2256" height="1440" />
+    <state x="245" y="84" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1368.882@0.0.1368.882" timestamp="1597675759930" />
+    <state x="513" y="177" key="#com.intellij.ide.util.MemberChooser" timestamp="1605405361304">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="846" y="289" key="#com.intellij.ide.util.MemberChooser/0.0.2256.1440@0.0.2256.1440" timestamp="1586357423240" />
-    <state x="266" y="220" key="#org.jetbrains.debugger.memory.view.InstancesWindow" timestamp="1579105787734">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="513" y="177" key="#com.intellij.ide.util.MemberChooser/0.0.1368.882@0.0.1368.882" timestamp="1605405361304" />
+    <state x="464" y="181" width="630" height="510" key="FileChooserDialogImpl" timestamp="1604070818058">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="266" y="220" key="#org.jetbrains.debugger.memory.view.InstancesWindow/0.0.1440.929@0.0.1440.929" timestamp="1579105787734" />
-    <state x="197" y="190" width="711" height="595" key="#xdebugger.evaluate" timestamp="1579768443358">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="464" y="181" width="630" height="510" key="FileChooserDialogImpl/0.0.1368.882@0.0.1368.882" timestamp="1604070818058" />
+    <state width="1326" height="331" key="GridCell.Tab.0.bottom" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="197" y="190" width="711" height="595" key="#xdebugger.evaluate/0.0.1440.929@0.0.1440.929" timestamp="1579768443358" />
-    <state width="433" height="466" key="DebuggerActiveHint" timestamp="1579708726418">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.0.bottom/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.0.center" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="433" height="466" key="DebuggerActiveHint/0.0.1440.929@0.0.1440.929" timestamp="1579708726418" />
-    <state x="783" y="319" key="FileChooserDialogImpl" timestamp="1586275614024">
-      <screen x="0" y="0" width="2256" height="1440" />
+    <state width="1326" height="331" key="GridCell.Tab.0.center/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.0.left" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="500" y="206" key="FileChooserDialogImpl/0.0.1440.929@0.0.1440.929" timestamp="1577979073969" />
-    <state x="783" y="319" key="FileChooserDialogImpl/0.0.2256.1440@0.0.2256.1440" timestamp="1586275614024" />
-    <state width="1397" height="231" key="GridCell.Tab.0.bottom" timestamp="1579768506876">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.0.left/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.0.right" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.0.bottom/0.0.1440.929@0.0.1440.929" timestamp="1579768506876" />
-    <state width="1397" height="231" key="GridCell.Tab.0.center" timestamp="1579768506876">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.0.right/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.1.bottom" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.0.center/0.0.1440.929@0.0.1440.929" timestamp="1579768506876" />
-    <state width="1397" height="231" key="GridCell.Tab.0.left" timestamp="1579768506876">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.1.bottom/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.1.center" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.0.left/0.0.1440.929@0.0.1440.929" timestamp="1579768506876" />
-    <state width="1397" height="231" key="GridCell.Tab.0.right" timestamp="1579768506876">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.1.center/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.1.left" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.0.right/0.0.1440.929@0.0.1440.929" timestamp="1579768506876" />
-    <state width="1397" height="231" key="GridCell.Tab.1.bottom" timestamp="1579768163667">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.1.left/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state width="1326" height="331" key="GridCell.Tab.1.right" timestamp="1604334085804">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.1.bottom/0.0.1440.929@0.0.1440.929" timestamp="1579768163667" />
-    <state width="1397" height="231" key="GridCell.Tab.1.center" timestamp="1579768163667">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state width="1326" height="331" key="GridCell.Tab.1.right/0.0.1368.882@0.0.1368.882" timestamp="1604334085804" />
+    <state x="175" y="30" key="SettingsEditor" timestamp="1603895441971">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.1.center/0.0.1440.929@0.0.1440.929" timestamp="1579768163667" />
-    <state width="1397" height="231" key="GridCell.Tab.1.left" timestamp="1579768163666">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="175" y="30" key="SettingsEditor/0.0.1368.882@0.0.1368.882" timestamp="1603895441971" />
+    <state x="752" y="52" key="extract.method.dialog" timestamp="1603814695516">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.1.left/0.0.1440.929@0.0.1440.929" timestamp="1579768163666" />
-    <state width="1397" height="231" key="GridCell.Tab.1.right" timestamp="1579768163667">
-      <screen x="0" y="0" width="1440" height="929" />
+    <state x="752" y="52" key="extract.method.dialog/0.0.1368.882@0.0.1368.882" timestamp="1603814695516" />
+    <state x="343" y="203" key="run.anything.popup" timestamp="1603522900166">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state width="1397" height="231" key="GridCell.Tab.1.right/0.0.1440.929@0.0.1440.929" timestamp="1579768163667" />
-    <state x="362" y="273" key="SettingsEditor" timestamp="1586359358627">
-      <screen x="0" y="0" width="2256" height="1440" />
+    <state x="343" y="203" key="run.anything.popup/0.0.1368.882@0.0.1368.882" timestamp="1603522900166" />
+    <state x="350" y="189" width="672" height="678" key="search.everywhere.popup" timestamp="1601900173763">
+      <screen x="0" y="0" width="1368" height="882" />
     </state>
-    <state x="231" y="176" key="SettingsEditor/0.0.1440.929@0.0.1440.929" timestamp="1577978410191" />
-    <state x="362" y="273" key="SettingsEditor/0.0.2256.1440@0.0.2256.1440" timestamp="1586359358627" />
-    <state x="641" y="448" key="com.intellij.ide.util.TipDialog" timestamp="1586356813346">
-      <screen x="0" y="0" width="2256" height="1440" />
-    </state>
-    <state x="409" y="289" key="com.intellij.ide.util.TipDialog/0.0.1440.929@0.0.1440.929" timestamp="1580139624452" />
-    <state x="641" y="448" key="com.intellij.ide.util.TipDialog/0.0.2256.1440@0.0.2256.1440" timestamp="1586356813346" />
-    <state x="734" y="356" key="extract.method.dialog" timestamp="1586175561787">
-      <screen x="0" y="0" width="2256" height="1440" />
-    </state>
-    <state x="734" y="356" key="extract.method.dialog/0.0.2256.1440@0.0.2256.1440" timestamp="1586175561787" />
+    <state x="350" y="189" width="672" height="678" key="search.everywhere.popup/0.0.1368.882@0.0.1368.882" timestamp="1601900173763" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java</url>
-          <line>702</line>
-          <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/com/netbric/s5/conductor/handler/VolumeHandler.java</url>
-          <line>674</line>
-          <option name="timeStamp" value="14" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/thirdpary/norm/src/main/java/com/dieselpoint/norm/Query.java</url>
-          <line>212</line>
-          <option name="timeStamp" value="16" />
-        </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/thirdpary/norm/src/main/java/com/dieselpoint/norm/sqlmakers/StandardPojoInfo.java</url>
           <line>300</line>

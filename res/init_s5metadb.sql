@@ -172,32 +172,18 @@ if(s.primary_rep_index=r.replica_index, 1, 0) as is_primary, r.store_id, r.tray_
 from t_volume as v, t_shard as s, t_replica as r, t_tenant as t  where v.id=s.volume_id and s.id=r.shard_id and t.id=v.tenant_id;
 
 
--- table used to generate sequence, val keep the latest available value
--- create table t_seq_gen(
--- 	name varchar(32) primary key,
--- 	val	integer not null);
--- insert into t_seq_gen values("vol_id", 66);
--- DROP FUNCTION IF EXISTS gen_volume_id;
--- DELIMITER $$
--- CREATE FUNCTION gen_volume_id() RETURNS BIGINT UNSIGNED
--- BEGIN
---   DECLARE v BIGINT UNSIGNED;
---   UPDATE t_seq_gen SET val=LAST_INSERT_ID(val+1) where name="vol_id";
---   SELECT LAST_INSERT_ID() into v;
---   RETURN v;
--- END;
--- $$
--- DELIMITER ;
+
 DROP SEQUENCE IF EXISTS seq_gen;
 CREATE SEQUENCE seq_gen START WITH 66 INCREMENT BY 1;
--- DROP FUNCTION IF EXISTS gen_volume_id;
--- DELIMITER $$
--- CREATE FUNCTION gen_volume_id() RETURNS BIGINT UNSIGNED
--- BEGIN
---    DECLARE v BIGINT UNSIGNED;
---    SELECT NEXTVAL(seq_gen) into v;
---    RETURN v;
--- END;
--- $$
--- DELIMITER ;
 
+DROP TRIGGER IF EXISTS update_vol_meta;
+DELIMITER $$
+CREATE TRIGGER update_vol_meta AFTER UPDATE ON t_replica
+FOR EACH ROW
+BEGIN
+    IF new.status != old.status THEN
+        update t_volume set meta_ver=meta_ver+1 where id=new.volume_id;
+    END IF;
+END;
+$$
+DELIMITER ;
