@@ -453,6 +453,22 @@ public class VolumeHandler
 
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			t_idx = (int)t.id;
+			class TempRep {
+				long replica_id;
+				String tray_uuid;
+				String mngt_ip;
+			}
+			List<TempRep> replicas = S5Database.getInstance().sql("select r.id replica_id, r.tray_uuid, s.mngt_ip " +
+					"from t_replica r, t_store s where r.store_id=s.id and r.volume_id=?", volume.id).results(TempRep.class);
+			for(TempRep r : replicas) {
+				logger.info("Deleteing replica:{} on store:{} disk:{}",  Long.toHexString(r.replica_id), r.mngt_ip, r.tray_uuid);
+				try {
+					SimpleHttpRpc.invokeStore(r.mngt_ip, "delete_replica", RestfulReply.class, "replica_id", r.replica_id,
+							"ssd_uuid", r.tray_uuid);
+				} catch (Exception e1) {
+					logger.error("Failed delete replica:{}, {}", Long.toHexString(r.replica_id), e1);
+				}
+			}
 		}
 		catch (InvalidParamException e)
 		{
