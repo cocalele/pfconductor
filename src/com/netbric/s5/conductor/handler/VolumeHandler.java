@@ -429,6 +429,11 @@ public class VolumeHandler
 		}
 	}
 
+	public static class TempRep {
+		public long replica_id;
+		public String tray_uuid;
+		public String mngt_ip;
+	}
 	public RestfulReply delete_volume(HttpServletRequest request, HttpServletResponse response)
 	{
 
@@ -453,11 +458,6 @@ public class VolumeHandler
 
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			t_idx = (int)t.id;
-			class TempRep {
-				long replica_id;
-				String tray_uuid;
-				String mngt_ip;
-			}
 			List<TempRep> replicas = S5Database.getInstance().sql("select r.id replica_id, r.tray_uuid, s.mngt_ip " +
 					"from t_replica r, t_store s where r.store_id=s.id and r.volume_id=?", volume.id).results(TempRep.class);
 			for(TempRep r : replicas) {
