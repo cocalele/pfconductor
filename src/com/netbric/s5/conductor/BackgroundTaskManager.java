@@ -18,7 +18,7 @@ public class BackgroundTaskManager {
 
 
     private long idSeed;
-    public Hashtable<Long, BackgroundTask> taskMap;
+    public Hashtable<Long, BackgroundTask> taskMap = new Hashtable<>();
     private ExecutorService threadPool = Executors.newFixedThreadPool(1);
 
     public BackgroundTask initiateTask(TaskType type, String desc, TaskExecutor exe, Object arg){

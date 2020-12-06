@@ -728,6 +728,41 @@ public class VolumeHandler
 		shards.toArray(reply.shards);
 		return reply;
 	}
+
+	private PrepareVolumeArg prepareVolumeOnStore(String tenant_name, String volume_name) throws InvalidParamException, StateException {
+		boolean need_reprepare;
+		PrepareVolumeArg arg = null;
+		do {
+			need_reprepare = false;
+			arg = getPrepareArgs(tenant_name, volume_name);
+
+			if (arg.status == Status.ERROR) {
+				logger.error(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
+				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
+			}
+			List<StoreNode> stores = S5Database.getInstance()
+					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK')",
+							arg.volume_id).results(StoreNode.class);
+
+			for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
+				StoreNode s = it.next();
+				RestfulReply rply = null;
+				try {
+					rply = prepareVolumeOnStore(s, arg);
+				} catch (Exception e) {
+					logger.error("Failed[2] to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
+					markReplicasOnStoreAsError(s.id, arg.volume_id);
+					need_reprepare = true;
+					break;
+				}
+				if (rply.retCode != RetCode.OK) {
+					logger.error(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
+					throw new StateException(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
+				}
+			}
+		} while (need_reprepare);
+		return arg;
+	}
 	public RestfulReply open_volume(HttpServletRequest request, HttpServletResponse response) {
 		String op = request.getParameter("op");
 		String volume_name;
@@ -739,34 +774,8 @@ public class VolumeHandler
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
-			boolean need_reprepare;
-			do {
-				need_reprepare = false;
-				PrepareVolumeArg arg = getPrepareArgs(tenant_name, volume_name);
-				volumeId = arg.volume_id;
-				if (arg.status == Status.ERROR) {
-					return new RestfulReply(op, RetCode.INVALID_STATE, String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
-				}
-				List<StoreNode> stores = S5Database.getInstance()
-						.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK')",
-								arg.volume_id).results(StoreNode.class);
-
-				for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
-					StoreNode s = it.next();
-					try {
-						RestfulReply rply = prepareVolumeOnStore(s, arg);
-						if (rply.retCode != RetCode.OK) {
-							logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, rply.reason);
-							return rply;
-						}
-					} catch (Exception e) {
-						logger.error("Failed[2] to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
-						markReplicasOnStoreAsError(s.id, arg.volume_id);
-						need_reprepare = true;
-						break;
-					}
-				}
-			} while (need_reprepare);
+			PrepareVolumeArg arg = prepareVolumeOnStore(volume_name, tenant_name);
+			volumeId = arg.volume_id;
 		} catch (InvalidParamException | StateException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
@@ -894,9 +903,9 @@ public class VolumeHandler
 					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
 					new BackgroundTaskManager.TaskExecutor() {
 						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
+							prepareVolumeOnStore(tenant_name, volume_name);
 							RecoveyManager.getInstance().recoveryVolume(t);
 						}
-
 					}, v);
 			return new BackgroundTaskReply(op+"_reply", t);
 		} catch (InvalidParamException e1) {
@@ -910,13 +919,16 @@ public class VolumeHandler
 		String op = request.getParameter("op");
 
 		try {
-			int taskId = Utils.getParamAsInt(request, "task_id");
+			long taskId = Utils.getParamAsLong(request, "task_id");
 
-			BackgroundTaskManager.BackgroundTask t= BackgroundTaskManager.getInstance().taskMap.get(taskId);
-			if(t != null)
-				return new BackgroundTaskReply(op+"_reply", t);
-			else
+			BackgroundTaskManager.BackgroundTask t= BackgroundTaskManager.getInstance().taskMap.get((long)taskId);
+			if(t != null) {
+				logger.info("query task id:{} status:{}, toString():{}, name:{}", t.id, t.status, t.status.toString(), t.status.name());
+				return new BackgroundTaskReply(op, t);
+			}
+			else {
 				return new RestfulReply(op, RetCode.INVALID_ARG, String.format("No such task:%d", taskId));
+			}
 		} catch (InvalidParamException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 
