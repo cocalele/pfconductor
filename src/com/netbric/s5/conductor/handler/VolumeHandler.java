@@ -741,11 +741,14 @@ public class VolumeHandler
 				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
 			}
 			List<StoreNode> stores = S5Database.getInstance()
-					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK')",
+					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK') ",
 							arg.volume_id).results(StoreNode.class);
 
 			for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
 				StoreNode s = it.next();
+				if(!s.status.equals(Status.OK)){
+					logger.warn("Prepare volume:{} on store:{}, but store status is:{}", volume_name, s.id, s.status);
+				}
 				RestfulReply rply = null;
 				try {
 					rply = prepareVolumeOnStore(s, arg);
@@ -763,6 +766,7 @@ public class VolumeHandler
 		} while (need_reprepare);
 		return arg;
 	}
+	
 	public RestfulReply open_volume(HttpServletRequest request, HttpServletResponse response) {
 		String op = request.getParameter("op");
 		String volume_name;
@@ -774,7 +778,7 @@ public class VolumeHandler
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
-			PrepareVolumeArg arg = prepareVolumeOnStore(volume_name, tenant_name);
+			PrepareVolumeArg arg = prepareVolumeOnStore(tenant_name, volume_name);
 			volumeId = arg.volume_id;
 		} catch (InvalidParamException | StateException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());

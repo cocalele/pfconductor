@@ -26,7 +26,7 @@ public class RecoveyManager {
 		long total = S5Database.getInstance().queryLongValue("select count(*) from t_replica where volume_id=? and status != ?",  v.id, Status.OK);
 		List<Shard> illhealthShards = S5Database.getInstance().where("volume_id=? and status != ?", v.id, Status.OK).results(Shard.class);
 		for(Shard s : illhealthShards) {
-			recoveryShard(task, total, s);
+			recoveryShard(task, v, total, s);
 		}
 		task.progress = 100;//100% completed
 	}
@@ -40,7 +40,7 @@ public class RecoveyManager {
 		public long object_size;
 
 	}
-	private void recoveryShard(BackgroundTaskManager.BackgroundTask task, long total, Shard s) throws Exception {
+	private void recoveryShard(BackgroundTaskManager.BackgroundTask task, Volume vol,  long total, Shard s) throws Exception {
 
 		List<RepExt> replicas = S5Database.getInstance().sql(
 				" select replica_id,mngt_ip store_ip, is_primary, r.status , s.id store_id, r.tray_uuid ssd_uuid,  t.object_size " +
@@ -69,8 +69,9 @@ public class RecoveyManager {
 			long meta = S5Database.getInstance().queryLongValue("select meta_ver from t_volume where id=?", VolumeIdUtils.replicaToVolumeId(r.replica_id));
 			SimpleHttpRpc.invokeStore(primaryRep.store_ip, "begin_recovery", RestfulReply.class, "replica_id", r.replica_id);
 			//SimpleHttpRpc.invokeStore(r.store_ip, "begin_recovery", RestfulReply.class, "replica_id", r.id);
-			BackgroundTaskReply store_task = SimpleHttpRpc.invokeStore(r.store_ip, "recovery_replica", BackgroundTaskReply.class, "replica_id", Long.toString(r.replica_id),
-					"from_store_id", Long.toString(r.store_id), "from_store_mngt_ip", primaryRep.store_ip, "from_ssd_uuid", primaryRep.ssd_uuid,
+			BackgroundTaskReply store_task = SimpleHttpRpc.invokeStore(r.store_ip, "recovery_replica", BackgroundTaskReply.class,
+					"replica_id", Long.toString(r.replica_id), "meta_ver", vol.meta_ver,
+					"from_store_id", Long.toString(primaryRep.store_id), "from_store_mngt_ip", primaryRep.store_ip, "from_ssd_uuid", primaryRep.ssd_uuid,
 					"ssd_uuid", r.ssd_uuid,	"object_size", Long.toString(primaryRep.object_size));
 			logger.info("recovery replica on store:{} task_id:{}", r.store_ip, store_task.taskId);
 			int recovery_ok = 0;
