@@ -24,7 +24,7 @@ public class ErrorHandler {
 		long repId = Utils.getParamAsLong(request, "rep_id");
 		int sc = Utils.getParamAsInt(request, "sc");
 
-		logger.error("_REPLICA_STATUS_ERROR_ Set replica:0x{} to ERROR status, for sc:{} from IP:{}", Long.toHexString(repId),
+		logger.error("SET_REPLICA_STATUS_ERROR_ Set replica:0x{} to ERROR status, for sc:{} from IP:{}", Long.toHexString(repId),
 				sc, request.getRemoteAddr());
 
 

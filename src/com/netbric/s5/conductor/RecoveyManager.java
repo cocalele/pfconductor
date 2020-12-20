@@ -1,5 +1,6 @@
 package com.netbric.s5.conductor;
 
+import com.netbric.s5.conductor.handler.VolumeHandler;
 import com.netbric.s5.conductor.rpc.BackgroundTaskReply;
 import com.netbric.s5.conductor.rpc.RestfulReply;
 import com.netbric.s5.conductor.rpc.SimpleHttpRpc;
@@ -28,6 +29,8 @@ public class RecoveyManager {
 		for(Shard s : illhealthShards) {
 			recoveryShard(task, v, total, s);
 		}
+		S5Database.getInstance().sql("update t_volume set status=IF((select count(*) from t_shard where status!='OK' and volume_id=?) = 0, 'OK', status)" +
+				" where id=?", v.id, v.id).execute();
 		task.progress = 100;//100% completed
 	}
 	public static class RepExt {
@@ -38,12 +41,13 @@ public class RecoveyManager {
 		public long store_id;
 		public String ssd_uuid;
 		public long object_size;
+		public String store_status;
 
 	}
 	private void recoveryShard(BackgroundTaskManager.BackgroundTask task, Volume vol,  long total, Shard s) throws Exception {
 
 		List<RepExt> replicas = S5Database.getInstance().sql(
-				" select replica_id,mngt_ip store_ip, is_primary, r.status , s.id store_id, r.tray_uuid ssd_uuid,  t.object_size " +
+				" select replica_id,mngt_ip store_ip, is_primary, r.status , s.id store_id, r.tray_uuid ssd_uuid,  t.object_size, s.status store_status " +
 						"from v_replica_ext r, t_store s , t_tray t " +
 						"where r.store_id=s.id and t.uuid=r.tray_uuid and r.shard_id=?", s.id).results(RepExt.class);
 		RepExt primaryRep = null;
@@ -64,11 +68,24 @@ public class RecoveyManager {
 		}
 
 		for(RepExt r : replicas) {
-
+			if(r.status.equals("OK"))
+				continue;
+			if(!r.store_status.equals("OK")){
+				logger.error("Replica:0x{} on store:[{}, status {}] not recoverable ", Long.toHexString(r.replica_id), r.store_ip, r.store_status);
+				continue;
+			}
 			logger.info("Begin recovery replica: {} on store:{} from primary:{}", String.format("0x%x",r.replica_id), r.store_ip, primaryRep.store_ip);
 			long meta = S5Database.getInstance().queryLongValue("select meta_ver from t_volume where id=?", VolumeIdUtils.replicaToVolumeId(r.replica_id));
-			SimpleHttpRpc.invokeStore(primaryRep.store_ip, "begin_recovery", RestfulReply.class, "replica_id", r.replica_id);
-			//SimpleHttpRpc.invokeStore(r.store_ip, "begin_recovery", RestfulReply.class, "replica_id", r.id);
+			RestfulReply reply = SimpleHttpRpc.invokeStore(r.store_ip, "begin_recovery", RestfulReply.class, "replica_id", r.replica_id);
+			if(reply.retCode != 0) {
+				logger.error("begin_recovery on slave node:{} failed, reason:{}", r.store_ip, reply.reason);
+				throw new Exception(reply.reason);
+			}
+			reply = SimpleHttpRpc.invokeStore(primaryRep.store_ip, "begin_recovery", RestfulReply.class, "replica_id", r.replica_id);
+			if(reply.retCode != 0) {
+				logger.error("begin_recovery on primary node:{} failed, reason:{}", primaryRep.store_ip, reply.reason);
+				throw new Exception(reply.reason);
+			}
 			BackgroundTaskReply store_task = SimpleHttpRpc.invokeStore(r.store_ip, "recovery_replica", BackgroundTaskReply.class,
 					"replica_id", Long.toString(r.replica_id), "meta_ver", vol.meta_ver,
 					"from_store_id", Long.toString(primaryRep.store_id), "from_store_mngt_ip", primaryRep.store_ip, "from_ssd_uuid", primaryRep.ssd_uuid,
@@ -95,16 +112,31 @@ public class RecoveyManager {
 				}
 			}
 			if(recovery_ok >= 0) {
-				//SimpleHttpRpc.invokeStore(r.store_ip, "end_recovery", RestfulReply.class, "replica_id", r.id);
-				SimpleHttpRpc.invokeStore(primaryRep.store_ip, "end_recovery", RestfulReply.class, "replica_id", r.replica_id, "ok", recovery_ok);
 				long metaOnEnd = S5Database.getInstance().queryLongValue("select meta_ver from t_volume where id=?", VolumeIdUtils.replicaToVolumeId(r.replica_id));
 				if(meta != metaOnEnd) {
 					logger.error("Meta version has changed during recovery from:{} to {}, give up", meta, metaOnEnd);
 					throw new StateException("Meta version has changed during recovery, give up");
 				}
+				reply = SimpleHttpRpc.invokeStore(primaryRep.store_ip, "end_recovery", RestfulReply.class, "replica_id", r.replica_id, "ok", recovery_ok);
+				if(reply.retCode != 0) {
+					logger.error("end_recovery on primary node:{} failed, reason:{}", primaryRep.store_ip, reply.reason);
+					throw new Exception(reply.reason);
+				}
+				reply = SimpleHttpRpc.invokeStore(r.store_ip, "end_recovery", RestfulReply.class, "replica_id", r.replica_id, "ok", recovery_ok);
+				if(reply.retCode != 0) {
+					logger.error("end_recovery on slave node:{} failed, reason:{}", r.store_ip, reply.reason);
+					throw new Exception(reply.reason);
+				}
+				logger.info("SET_REPLICA_STATUS_OK Set replica:0x{} to OK status, recovery succeeded", Long.toHexString(r.replica_id));
+				S5Database.getInstance().sql("update t_replica set status='OK' where id=?", r.replica_id).execute();
 			}
 
 			task.progress += 100/total;
 		}
+
+		//meta_ver has already increased by MySQL trigger
+		VolumeHandler.pushMetaverToStore(vol);
+		S5Database.getInstance().sql("update t_shard set status=IF((select count(*) from t_replica  where status='ERROR' and shard_id=?) = 0, 'OK', status)" +
+				" where id=?", s.id, s.id).execute();
 	}
 }

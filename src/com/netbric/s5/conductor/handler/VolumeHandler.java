@@ -22,8 +22,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 public class VolumeHandler
 {
@@ -643,7 +641,7 @@ public class VolumeHandler
 		}
 		return arg;
 	}
-	public RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
+	private RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
 	{
 		arg.op="prepare_volume";
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
@@ -729,7 +727,7 @@ public class VolumeHandler
 		return reply;
 	}
 
-	private PrepareVolumeArg prepareVolumeOnStore(String tenant_name, String volume_name) throws InvalidParamException, StateException {
+	private PrepareVolumeArg prepareVolume(String tenant_name, String volume_name) throws InvalidParamException, StateException {
 		boolean need_reprepare;
 		PrepareVolumeArg arg = null;
 		do {
@@ -741,7 +739,7 @@ public class VolumeHandler
 				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
 			}
 			List<StoreNode> stores = S5Database.getInstance()
-					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK') ",
+					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=?)  and status='OK'",
 							arg.volume_id).results(StoreNode.class);
 
 			for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
@@ -766,7 +764,7 @@ public class VolumeHandler
 		} while (need_reprepare);
 		return arg;
 	}
-	
+
 	public RestfulReply open_volume(HttpServletRequest request, HttpServletResponse response) {
 		String op = request.getParameter("op");
 		String volume_name;
@@ -778,7 +776,7 @@ public class VolumeHandler
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
-			PrepareVolumeArg arg = prepareVolumeOnStore(tenant_name, volume_name);
+			PrepareVolumeArg arg = prepareVolume(tenant_name, volume_name);
 			volumeId = arg.volume_id;
 		} catch (InvalidParamException | StateException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
@@ -907,7 +905,7 @@ public class VolumeHandler
 					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
 					new BackgroundTaskManager.TaskExecutor() {
 						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
-							prepareVolumeOnStore(tenant_name, volume_name);
+							prepareVolume(tenant_name, volume_name);
 							RecoveyManager.getInstance().recoveryVolume(t);
 						}
 					}, v);
@@ -936,6 +934,24 @@ public class VolumeHandler
 		} catch (InvalidParamException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 
+		}
+	}
+
+	public static void pushMetaverToStore(Volume vol) throws Exception
+	{
+		vol = Volume.fromId(vol.id);//requery volume for latest meta_ver
+		List<StoreNode> stores = S5Database.getInstance().sql(" select * from t_store where id in (select store_id from t_replica where volume_id=?) " +
+				"and status='OK'", vol.id)
+				.results(StoreNode.class);
+		logger.warn("push volume:{} new meta_ver:{} to store, ",vol.name, vol.meta_ver);
+
+		for(StoreNode s : stores) {
+			RestfulReply reply = SimpleHttpRpc.invokeStore(s.mngtIp, "set_meta_ver", RestfulReply.class,
+					"volume_id", vol.id, "meta_ver", vol.meta_ver);
+			if(reply.retCode != 0) {
+				logger.error("update_metaver on node:{} failed, reason:{}", s.mngtIp, reply.reason);
+				throw new Exception(reply.reason);
+			}
 		}
 	}
 }
