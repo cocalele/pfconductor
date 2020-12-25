@@ -32,11 +32,14 @@ public class ClusterManager
 	private static Object locker = new Object();
 	public static String zkBaseDir;
 	public static final String defaultClusterName = "cluster1";
+	public static String myZkNodePath;
+	public static String mngtIp;
 
 	public static void registerAsConductor(String managmentIp, String zkIp) throws Exception
 	{
 		try
 		{
+			mngtIp = managmentIp;
 			zk = new ZooKeeper(zkIp, 50000, new Watcher() {
 				@Override
 				public void process(WatchedEvent event)
@@ -65,7 +68,9 @@ public class ClusterManager
 			}
 			zkHelper = new ZkHelper(zk);
 			zkHelper.createZkNodeIfNotExist(zkBaseDir + "/conductors",null);
-			zk.create(ClusterManager.zkBaseDir + "/conductors/conductor", managmentIp.getBytes(), Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+			myZkNodePath = zk.create(ClusterManager.zkBaseDir + "/conductors/conductor", managmentIp.getBytes(),
+					Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+			logger.info("Register on ZK as node:{}", myZkNodePath);
 		}
 		catch (IOException | KeeperException | InterruptedException e)
 		{
@@ -74,6 +79,19 @@ public class ClusterManager
 
 	}
 
+	public static void unregister()
+	{
+		try {
+			logger.info("Unregister conductor:{}, {}", mngtIp, myZkNodePath);
+			zk.delete(myZkNodePath, -1);
+			zk.close();
+			zk=null;
+			zkHelper.zk = null;
+			zkHelper = null;
+		} catch (InterruptedException |KeeperException e) {
+			logger.error("Error to delete node:{}, for:{}", myZkNodePath, e);
+		}
+	}
 	/**
 	 * wait until self become the master conductor
 	 * 
@@ -179,6 +197,7 @@ public class ClusterManager
 				tr.store_id =store_id;
 				tr.device = new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/devname", false, null));
 				tr.raw_capacity = Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
+				tr.object_size =  Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/object_size", false, null)));
 				zkHelper.watchNode(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/online", new ZkHelper.NodeChangeCallback() {
 					@Override
 					void onNodeCreate(String childPath) {

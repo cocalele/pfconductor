@@ -5,10 +5,7 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.conductor.*;
-import com.netbric.s5.conductor.rpc.CreateVolumeReply;
-import com.netbric.s5.conductor.rpc.RestfulReply;
-import com.netbric.s5.conductor.rpc.RetCode;
-import com.netbric.s5.conductor.rpc.SimpleHttpRpc;
+import com.netbric.s5.conductor.rpc.*;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -24,12 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
 
 public class VolumeHandler
 {
@@ -435,6 +427,11 @@ public class VolumeHandler
 		}
 	}
 
+	public static class TempRep {
+		public long replica_id;
+		public String tray_uuid;
+		public String mngt_ip;
+	}
 	public RestfulReply delete_volume(HttpServletRequest request, HttpServletResponse response)
 	{
 
@@ -459,6 +456,17 @@ public class VolumeHandler
 
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			t_idx = (int)t.id;
+			List<TempRep> replicas = S5Database.getInstance().sql("select r.id replica_id, r.tray_uuid, s.mngt_ip " +
+					"from t_replica r, t_store s where r.store_id=s.id and r.volume_id=?", volume.id).results(TempRep.class);
+			for(TempRep r : replicas) {
+				logger.info("Deleteing replica:{} on store:{} disk:{}",  Long.toHexString(r.replica_id), r.mngt_ip, r.tray_uuid);
+				try {
+					SimpleHttpRpc.invokeStore(r.mngt_ip, "delete_replica", RestfulReply.class, "replica_id", r.replica_id,
+							"ssd_uuid", r.tray_uuid);
+				} catch (Exception e1) {
+					logger.error("Failed delete replica:{}, {}", Long.toHexString(r.replica_id), e1);
+				}
+			}
 		}
 		catch (InvalidParamException e)
 		{
@@ -599,8 +607,8 @@ public class VolumeHandler
 				.first(Volume.class);
 		if (vol == null)
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " not exists");
-		if (!vol.status.equals(Status.OK))
-			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be exposed");
+		if (vol.status.equals(Status.ERROR))
+			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be opened");
 
 		List<Shard> shards = S5Database.getInstance().where("volume_id=?", vol.id).results(Shard.class);
 
@@ -633,7 +641,8 @@ public class VolumeHandler
 		}
 		return arg;
 	}
-	public RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws IOException, InterruptedException, TimeoutException, ExecutionException {
+	private RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
+	{
 		arg.op="prepare_volume";
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
 		Gson gson = builder.create();
@@ -662,7 +671,7 @@ public class VolumeHandler
 				logger.error("Failed to prepare_volume:{} on node:%s, code:%d, reason:{}", arg.volume_name, s.mngtIp, r.retCode, r.reason);
 			return r;
 		} catch (Exception e) {
-			throw new IOException(e);
+			throw e;
 		}
 
 	}
@@ -691,8 +700,10 @@ public class VolumeHandler
 		}
 		logger.info("{} ports found ", portMap.size());
 
-		List<ShardInfoForClient> shards = S5Database.getInstance().sql("select s.status, s.shard_index as 'index', (select group_concat(data_ports order by is_primary desc)"+
-						" from  v_replica_ext where shard_id=s.id and status='OK') as store_ips from t_shard as s where s.volume_id=?", volumeId).results(ShardInfoForClient.class);
+		List<ShardInfoForClient> shards = S5Database.getInstance().sql("select s.status, s.shard_index as 'index'," +
+				" (select group_concat(data_ports order by is_primary desc, status_time asc, replica_index asc)"+
+				" from  v_replica_ext where shard_id=s.id and status='OK') as store_ips from t_shard as s where s.volume_id=?",
+				volumeId).results(ShardInfoForClient.class);
 
 		logger.info("shard cnt:{}", shards.size());
 		for(ShardInfoForClient sd : shards) {
@@ -715,6 +726,45 @@ public class VolumeHandler
 		shards.toArray(reply.shards);
 		return reply;
 	}
+
+	private PrepareVolumeArg prepareVolume(String tenant_name, String volume_name) throws InvalidParamException, StateException {
+		boolean need_reprepare;
+		PrepareVolumeArg arg = null;
+		do {
+			need_reprepare = false;
+			arg = getPrepareArgs(tenant_name, volume_name);
+
+			if (arg.status == Status.ERROR) {
+				logger.error(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
+				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
+			}
+			List<StoreNode> stores = S5Database.getInstance()
+					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=?)  and status='OK'",
+							arg.volume_id).results(StoreNode.class);
+
+			for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
+				StoreNode s = it.next();
+				if(!s.status.equals(Status.OK)){
+					logger.warn("Prepare volume:{} on store:{}, but store status is:{}", volume_name, s.id, s.status);
+				}
+				RestfulReply rply = null;
+				try {
+					rply = prepareVolumeOnStore(s, arg);
+				} catch (Exception e) {
+					logger.error("Failed[2] to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
+					markReplicasOnStoreAsError(s.id, arg.volume_id);
+					need_reprepare = true;
+					break;
+				}
+				if (rply.retCode != RetCode.OK) {
+					logger.error(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
+					throw new StateException(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
+				}
+			}
+		} while (need_reprepare);
+		return arg;
+	}
+
 	public RestfulReply open_volume(HttpServletRequest request, HttpServletResponse response) {
 		String op = request.getParameter("op");
 		String volume_name;
@@ -726,34 +776,8 @@ public class VolumeHandler
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
-			boolean need_reprepare;
-			do {
-				need_reprepare = false;
-				PrepareVolumeArg arg = getPrepareArgs(tenant_name, volume_name);
-				volumeId = arg.volume_id;
-				if (arg.status == Status.ERROR) {
-					return new RestfulReply(op, RetCode.INVALID_STATE, String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
-				}
-				List<StoreNode> stores = S5Database.getInstance()
-						.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=? and status='OK')",
-								arg.volume_id).results(StoreNode.class);
-
-				for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
-					StoreNode s = it.next();
-					try {
-						RestfulReply rply = prepareVolumeOnStore(s, arg);
-						if (rply.retCode != RetCode.OK) {
-							logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, rply.reason);
-							return rply;
-						}
-					} catch (IOException | InterruptedException | TimeoutException | ExecutionException e) {
-						logger.error("Failed to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
-						markReplicasOnStoreAsError(s.id, arg.volume_id);
-						need_reprepare = true;
-						break;
-					}
-				}
-			} while (need_reprepare);
+			PrepareVolumeArg arg = prepareVolume(tenant_name, volume_name);
+			volumeId = arg.volume_id;
 		} catch (InvalidParamException | StateException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
@@ -859,5 +883,75 @@ public class VolumeHandler
 			}
 		}
 	}
-}
 
+	public RestfulReply recoveryVolume(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+
+		Volume v = null;
+
+		try {
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+
+			v = Volume.fromName(tenant_name, volume_name);
+			if(v == null)
+				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
+			Volume finalV = v;
+			BackgroundTaskManager.BackgroundTask t=null;
+
+			t = BackgroundTaskManager.getInstance().initiateTask(
+					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
+					new BackgroundTaskManager.TaskExecutor() {
+						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
+							prepareVolume(tenant_name, volume_name);
+							RecoveyManager.getInstance().recoveryVolume(t);
+						}
+					}, v);
+			return new BackgroundTaskReply(op+"_reply", t);
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+	}
+
+
+	public RestfulReply queryTask(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+
+		try {
+			long taskId = Utils.getParamAsLong(request, "task_id");
+
+			BackgroundTaskManager.BackgroundTask t= BackgroundTaskManager.getInstance().taskMap.get((long)taskId);
+			if(t != null) {
+				logger.info("query task id:{} status:{}, toString():{}, name:{}", t.id, t.status, t.status.toString(), t.status.name());
+				return new BackgroundTaskReply(op, t);
+			}
+			else {
+				return new RestfulReply(op, RetCode.INVALID_ARG, String.format("No such task:%d", taskId));
+			}
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+	}
+
+	public static void pushMetaverToStore(Volume vol) throws Exception
+	{
+		vol = Volume.fromId(vol.id);//requery volume for latest meta_ver
+		List<StoreNode> stores = S5Database.getInstance().sql(" select * from t_store where id in (select store_id from t_replica where volume_id=?) " +
+				"and status='OK'", vol.id)
+				.results(StoreNode.class);
+		logger.warn("push volume:{} new meta_ver:{} to store, ",vol.name, vol.meta_ver);
+
+		for(StoreNode s : stores) {
+			RestfulReply reply = SimpleHttpRpc.invokeStore(s.mngtIp, "set_meta_ver", RestfulReply.class,
+					"volume_id", vol.id, "meta_ver", vol.meta_ver);
+			if(reply.retCode != 0) {
+				logger.error("update_metaver on node:{} failed, reason:{}", s.mngtIp, reply.reason);
+				throw new Exception(reply.reason);
+			}
+		}
+	}
+}

@@ -90,11 +90,16 @@ public class ZkHelper {
 				while(true) {
 					zk.exists(nodePath, event -> {
 						s.release();
-						logger.info("ZK event:{} on path:{}", event.getType().toString(), event.getPath());
+						logger.info("ZK event:{} on path:{}, zk state:{}", event.getType().toString(), event.getPath(),
+								event.getState().toString());
 						if(event.getType() == NodeCreated)
 							cbk.onNodeCreate(event.getPath());
 						else if(event.getType() == NodeDeleted)
 							cbk.onNodeDelete(event.getPath());
+						else if(event.getType() == Watcher.Event.EventType.None && event.getState() == Watcher.Event.KeeperState.Disconnected) {
+							logger.info("Exit watching thread for:{}", nodePath);
+							return;
+						}
 						else {
 							logger.error("Unexpected zk event:{}", event.getType().toString());
 							return;

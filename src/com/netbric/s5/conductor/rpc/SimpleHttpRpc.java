@@ -27,7 +27,7 @@ public class SimpleHttpRpc {
 		logger.info("Get response:{}", response.getContentAsString());
 		if(response.getStatus() < 200 || response.getStatus() >= 300)
 		{
-			throw new IOException(String.format("Failed http GET {}, HTTP status:%d, reason:%s",
+			throw new IOException(String.format("Failed http GET %s, HTTP status:%d, reason:%s",
 					url, response.getStatus(), response.getReason()));
 		}
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
