@@ -5,6 +5,7 @@ import com.netbric.s5.cluster.ZkHelper;
 import com.netbric.s5.conductor.*;
 import com.netbric.s5.conductor.rpc.*;
 import net.sourceforge.argparse4j.ArgumentParsers;
+import net.sourceforge.argparse4j.helper.HelpScreenException;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
 import net.sourceforge.argparse4j.inf.Subparser;
@@ -68,7 +69,7 @@ public class CliMain
 		{
 			ArgumentParser cp = ArgumentParsers.newFor("pfcli").build()
 					.description("PureFlash command line tool");
-			cp.addArgument("-c").help("pfs config file path").setDefault(defaultCfgPath);
+			cp.addArgument("-c").metavar("cfg_file_path").required(false).help("pfs config file path").setDefault(defaultCfgPath);
 			Subparsers sps = cp.addSubparsers().dest("cmd_verb");
 //			ArrayList<String> remainArgs = new ArrayList<>();
 //			Namespace ns = cp.parseKnownArgs(args, remainArgs);
@@ -132,12 +133,7 @@ public class CliMain
 			sp=sps.addParser("create_snapshot");
 			sp.addArgument("-v").help("Volume name to create snapshot").required(true).metavar("volume_name");
 			sp.addArgument("-n").help("Name of snapshot").required(true).metavar("snap_name");
-			sp.setDefault("__func", new CmdRunner() {
-				@Override
-				public void run(Namespace cmd, Config cfg) throws Exception {
-					cmd_create_snapshot(cmd, cfg);
-				}
-			});
+			sp.setDefault("__func", (CmdRunner) CliMain::cmd_create_snapshot);
 
 			sp=sps.addParser("get_pfc");
 			sp.setDefault("__func", new CmdRunner() {
@@ -154,6 +150,16 @@ public class CliMain
 					cmd_get_conn_str(cmd, cfg);
 				}
 			});
+
+			sp=sps.addParser("scrub_volume");
+			sp.addArgument("-v").help("Volume name to scrub").required(true).metavar("volume_name");
+			//sp.addArgument("-t").help("Tenant name of volume").required(true).metavar("tenant_name");
+			sp.setDefault("__func", (CmdRunner) CliMain::cmd_scrub_volume);
+
+			sp=sps.addParser("recovery_volume");
+			sp.addArgument("-v").help("Volume name to scrub").required(true).metavar("volume_name");
+			//sp.addArgument("-t").help("Tenant name of volume").required(true).metavar("tenant_name");
+			sp.setDefault("__func", (CmdRunner) CliMain::cmd_recovery_volume);
 
 			Namespace cmd = cp.parseArgs(args);
 			String cfgPath = cmd.getString("c");
@@ -174,6 +180,9 @@ public class CliMain
 				default:
 					((CmdRunner)cmd.get("__func")).run(cmd, cfg);
 			}
+		}
+		catch(HelpScreenException e){
+			return ;
 		}
 		catch (Exception e1)
 		{
@@ -265,6 +274,46 @@ public class CliMain
 			logger.info("Succeed create_snapshot");
 		else
 			throw new IOException(String.format("Failed to create_snapshot , code:%d, reason:%s", r.retCode, r.reason));
+	}
+
+	static void cmd_scrub_volume(Namespace cmd, Config cfg) throws Exception {
+		String volName = cmd.getString("v");
+
+		BackgroundTaskReply r = SimpleHttpRpc.invokeConductor(cfg, "scrub_volume",  BackgroundTaskReply.class,
+				"volume_name", volName);
+		if(r.retCode != RetCode.OK)
+			throw new IOException(String.format("Failed to scrub volume , code:%d, reason:%s", r.retCode, r.reason));
+
+		for(;r.task.status == BackgroundTaskManager.TaskStatus.RUNNING || r.task.status == BackgroundTaskManager.TaskStatus.WAITING; Thread.sleep(2000)) {
+			r = SimpleHttpRpc.invokeConductor(cfg, "query_task", BackgroundTaskReply.class,
+					"task_id", r.taskId);
+			if (r.retCode != RetCode.OK)
+				throw new IOException(String.format("Failed to scrub volume , code:%d, reason:%s", r.retCode, r.reason));
+			logger.info("{}, status:{}, progress:{}", r.task.desc, r.task.status, r.task.progress);
+		}
+
+		logger.info("Scrub volume:{} complete, status:{}", volName, r.task.status);
+
+	}
+
+	static void cmd_recovery_volume(Namespace cmd, Config cfg) throws Exception {
+		String volName = cmd.getString("v");
+
+		BackgroundTaskReply r = SimpleHttpRpc.invokeConductor(cfg, "recovery_volume",  BackgroundTaskReply.class,
+				"volume_name", volName);
+		if(r.retCode != RetCode.OK)
+			throw new IOException(String.format("Failed to reocvery volume , code:%d, reason:%s", r.retCode, r.reason));
+
+		for(;r.task.status == BackgroundTaskManager.TaskStatus.RUNNING || r.task.status == BackgroundTaskManager.TaskStatus.WAITING; Thread.sleep(2000)) {
+			r = SimpleHttpRpc.invokeConductor(cfg, "query_task", BackgroundTaskReply.class,
+					"task_id", r.taskId);
+			if (r.retCode != RetCode.OK)
+				throw new IOException(String.format("Failed to recovery volume , code:%d, reason:%s", r.retCode, r.reason));
+			logger.info("{}, status:{}, progress:{}", r.task.desc, r.task.status, r.task.progress);
+		}
+
+		logger.info("Recovery volume:{} complete, status:{}", volName, r.task.status);
+
 	}
 
 	static void cmd_get_pfc(Namespace cmd, Config cfg) throws Exception {
