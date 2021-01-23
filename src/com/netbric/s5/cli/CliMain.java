@@ -99,7 +99,7 @@ public class CliMain
 			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
 					String volumeName = cmd.getString("v");
 
-					CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_volume", CreateVolumeReply.class, "name", volumeName);
+					CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_volume", CreateVolumeReply.class, "volume_name", volumeName);
 					if(r.retCode == RetCode.OK)
 						logger.info("Succeed delete volume:{}", volumeName);
 					else
@@ -198,7 +198,7 @@ public class CliMain
 		long size = parseNumber(cmd.getString("s"));
 		long rep_num =cmd.getInt("rep_num");
 
-		CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_volume", CreateVolumeReply.class, "name", volumeName,
+		CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_volume", CreateVolumeReply.class, "volume_name", volumeName,
 				"size", size, "rep_cnt", rep_num);
 		if(r.retCode == RetCode.OK)
 			logger.info("Succeed create_volume:{}", volumeName);

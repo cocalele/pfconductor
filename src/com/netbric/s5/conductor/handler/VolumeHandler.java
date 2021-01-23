@@ -212,7 +212,7 @@ public class VolumeHandler
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
 			}
 
-			String volume_name = Utils.getParamAsString(request, "name");
+			String volume_name = Utils.getParamAsString(request, "volume_name");
 			Volume volume = S5Database.getInstance().table("t_volume")
 					.where("name=? AND tenant_id=?", volume_name, t.id).transaction(trans).first(Volume.class);
 			if (volume != null)
@@ -450,13 +450,14 @@ public class VolumeHandler
 			if (tenant == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
 
-			volume_name = Utils.getParamAsString(request, "name");
-			Volume volume = S5Database.getInstance().table("t_volume").where("name=?", volume_name).first(Volume.class);
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			Volume volume = S5Database.getInstance().table("t_volume").where("name=? and tenant_id=?",
+					volume_name, tenant.id).first(Volume.class);
 			if (volume == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists: " + volume_name);
 
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
-			t_idx = (int)t.id;
+
+			t_idx = (int)tenant.id;
 			List<TempRep> replicas = S5Database.getInstance().sql("select r.id replica_id, r.tray_uuid, s.mngt_ip " +
 					"from t_replica r, t_store s where r.store_id=s.id and r.volume_id=?", volume.id).results(TempRep.class);
 			for(TempRep r : replicas) {
