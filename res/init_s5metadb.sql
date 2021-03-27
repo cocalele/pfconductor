@@ -4,19 +4,19 @@ use s5;
 
 
 DROP PROCEDURE IF EXISTS check_db_ver;
-DELIMITER $$
-CREATE PROCEDURE check_db_ver()
-BEGIN
-	DECLARE majorv int;
-	select convert(SUBSTRING_INDEX(version(), '.', 1), integer)  into majorv;
-	if majorv < 11 then
-		\! echo "Need MariaDB version 10.4 or higher";
-		exit;
-	end if;
-END
-$$
-DELIMITER ;
-call check_db_ver();
+-- DELIMITER $$
+-- CREATE PROCEDURE check_db_ver()
+-- BEGIN
+-- 	DECLARE majorv int;
+-- 	select convert(SUBSTRING_INDEX(version(), '.', 1), integer)  into majorv;
+-- 	if majorv < 11 then
+-- 		\! echo "Need MariaDB version 10.4 or higher";
+-- 		exit;
+-- 	end if
+-- END
+-- $$
+-- DELIMITER ;
+-- call check_db_ver();
 
 
 drop view if exists v_id;
