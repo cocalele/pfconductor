@@ -5,10 +5,7 @@ import com.netbric.s5.conductor.rpc.BackgroundTaskReply;
 import com.netbric.s5.conductor.rpc.RestfulReply;
 import com.netbric.s5.conductor.rpc.SimpleHttpRpc;
 import com.netbric.s5.conductor.rpc.StoreQueryTaskReply;
-import com.netbric.s5.orm.S5Database;
-import com.netbric.s5.orm.Shard;
-import com.netbric.s5.orm.Status;
-import com.netbric.s5.orm.Volume;
+import com.netbric.s5.orm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,10 +13,10 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.List;
 
-public class RecoveyManager {
-	static final Logger logger = LoggerFactory.getLogger(RecoveyManager.class);
-	static RecoveyManager inst = new RecoveyManager();
-	public static RecoveyManager getInstance() {
+public class RecoveryManager {
+	static final Logger logger = LoggerFactory.getLogger(RecoveryManager.class);
+	static RecoveryManager inst = new RecoveryManager();
+	public static RecoveryManager getInstance() {
 		return inst;
 	}
 	public void recoveryVolume(BackgroundTaskManager.BackgroundTask task) throws Exception {
@@ -139,4 +136,5 @@ public class RecoveyManager {
 		S5Database.getInstance().sql("update t_shard set status=IF((select count(*) from t_replica  where status='ERROR' and shard_id=?) = 0, 'OK', status)" +
 				" where id=?", s.id, s.id).execute();
 	}
+
 }

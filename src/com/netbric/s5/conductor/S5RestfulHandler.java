@@ -144,6 +144,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.recoveryVolume(request, response);
 			else if("query_task".equals(op))
 				reply = volumeHandler.queryTask(request, response);
+			else if("move_volume".equals(op))
+				reply = volumeHandler.moveVolume(request, response);
 			else if("scrub_volume".equals(op))
 				reply = volumeHandler.scrubVolume(request, response);
 			else

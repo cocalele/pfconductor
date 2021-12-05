@@ -28,11 +28,23 @@ public class VolumeHandler
 {
 	public static class ReplicaArg
 	{
+		public long id;
 		public long index;
 		public long store_id;
 		public String tray_uuid;
 		public String status;
 		public String rep_ports;
+		public ReplicaArg clone()
+		{
+			ReplicaArg r  = new ReplicaArg();
+			r.id = id;
+			r.index = index;
+			r.store_id = store_id;
+			r.tray_uuid = tray_uuid;
+			r.status = status;
+			r.rep_ports = rep_ports;
+			return r;
+		}
 	};
 	public static class ShardArg
 	{
@@ -602,7 +614,8 @@ public class VolumeHandler
 
 	}
 
-	PrepareVolumeArg getPrepareArgs(String tenant_name, String volume_name) throws InvalidParamException, StateException {
+	public static PrepareVolumeArg getPrepareArgs(String tenant_name, String volume_name) throws InvalidParamException, StateException
+	{
 		Volume vol = S5Database.getInstance()
 				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.name=? and t_volume.name=? and t_volume.tenant_id=t_tenant.id",
 						tenant_name, volume_name)
@@ -611,7 +624,11 @@ public class VolumeHandler
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " not exists");
 		if (vol.status.equals(Status.ERROR))
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be opened");
+		return getPrepareArgs(vol);
+	}
 
+	public static PrepareVolumeArg getPrepareArgs(Volume vol) throws  StateException
+	{
 		List<Shard> shards = S5Database.getInstance().where("volume_id=?", vol.id).results(Shard.class);
 
 		PrepareVolumeArg arg = new PrepareVolumeArg();
@@ -634,16 +651,16 @@ public class VolumeHandler
 			shard.primary_rep_index = dbShard.primary_rep_index;
 			long shardId = dbShard.id;
 
-			shard.replicas = S5Database.getInstance().sql("select r.replica_index as 'index', r.tray_uuid, r.store_id, r.status, r.store_id, r.status, r.rep_ports " +
+			shard.replicas = S5Database.getInstance().sql("select r.replica_id as id, r.replica_index as 'index', r.tray_uuid, r.store_id, r.status, r.store_id, r.status, r.rep_ports " +
 					" from v_replica_ext r where r.shard_id=?", shardId)
 					.results(ReplicaArg.class);
 			if (shard.replicas.size() == 0)
-				throw new StateException("Volume:" + tenant_name + ":" + volume_name + " no replicas available");
+				throw new StateException("Volume:" + vol.tenant_id + ":" + vol.name + " no replicas available");
 			arg.shards.add(shard);
 		}
 		return arg;
 	}
-	private RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
+	public static RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
 	{
 		arg.op="prepare_volume";
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
@@ -854,7 +871,7 @@ public class VolumeHandler
 		return new RestfulReply(op);
 	}
 
-	void updateReplicaStatusToError(int storeId, long volumeId, String reason)
+	static void updateReplicaStatusToError(int storeId, long volumeId, String reason)
 	{
 		logger.error("Update replicas to ERROR on store:{} of volume:{}, for:{}", storeId, volumeId, reason);
 		S5Database.getInstance().sql("update t_replica set status=? where volume_id=? and store_id=?",
@@ -862,7 +879,7 @@ public class VolumeHandler
 
 	}
 
-	void incrVolumeMetaver(Volume v, boolean pushToStore, String reason)
+	public static void incrVolumeMetaver(Volume v, boolean pushToStore, String reason)
 	{
 		S5Database.getInstance().sql("update t_volume set meta_ver=meta_ver+1 where id=?", v.id)
 				.execute();
@@ -900,15 +917,14 @@ public class VolumeHandler
 			v = Volume.fromName(tenant_name, volume_name);
 			if(v == null)
 				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
-			Volume finalV = v;
-			BackgroundTaskManager.BackgroundTask t=null;
+			BackgroundTaskManager.BackgroundTask t;
 
 			t = BackgroundTaskManager.getInstance().initiateTask(
 					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
 					new BackgroundTaskManager.TaskExecutor() {
 						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
 							prepareVolume(tenant_name, volume_name);
-							RecoveyManager.getInstance().recoveryVolume(t);
+							RecoveryManager.getInstance().recoveryVolume(t);
 						}
 					}, v);
 			return new BackgroundTaskReply(op+"_reply", t);
@@ -918,6 +934,38 @@ public class VolumeHandler
 		}
 	}
 
+	public RestfulReply moveVolume(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+
+		Volume v = null;
+
+		try {
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+
+			v = Volume.fromName(tenant_name, volume_name);
+			if(v == null)
+				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
+			BackgroundTaskManager.BackgroundTask t;
+			long targetStoreId = Utils.getParamAsLong(request, "target_store");
+			long fromStoreId = Utils.getParamAsLong(request, "from_store");
+			String targetSsdUuid = Utils.getParamAsString(request, "target_ssd_uuid");
+			String fromSsdUuid = Utils.getParamAsString(request, "from_ssd_uuid");
+
+			t = BackgroundTaskManager.getInstance().initiateTask(
+					BackgroundTaskManager.TaskType.RECOVERY, "move volume:" + volume_name,
+					t1 -> {
+						prepareVolume(tenant_name, volume_name);
+						RebalanceManager.getInstance().moveVolume(t1, fromStoreId, fromSsdUuid, targetStoreId, targetSsdUuid);
+					}, v);
+			return new BackgroundTaskReply(op+"_reply", t);
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+	}
 
 	public RestfulReply queryTask(HttpServletRequest request, HttpServletResponse response) {
 		String op = request.getParameter("op");

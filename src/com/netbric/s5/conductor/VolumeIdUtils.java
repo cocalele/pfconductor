@@ -11,6 +11,9 @@ public class VolumeIdUtils {
 		return repId & 0xffffffffff000000L;
 	}
 	static public long replicaToShardId(long repId) {
-		return repId & 0xffffffffffffff00L;
+		return repId &    0xfffffffffffffff0L;
+	}
+	static public int replicaToShardIndex(long repId) {
+		return (int)((repId & 0x0000000000fffff0L)>>4);
 	}
 }

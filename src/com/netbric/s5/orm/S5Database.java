@@ -10,6 +10,7 @@ import java.util.HashMap;
 
 import javax.sql.DataSource;
 
+import com.dieselpoint.norm.Transaction;
 import com.dieselpoint.norm.sqlmakers.MySqlMaker;
 import com.netbric.s5.conductor.ConfigException;
 import org.apache.commons.lang3.SystemUtils;
@@ -95,8 +96,12 @@ public class S5Database extends Database
 		return null;
 	}
 
-	public long queryLongValue(String sql,  Object... args) throws SQLException {
-		HashMap m = sql(sql, args).first(HashMap.class);
+	public long queryLongValue(Transaction tx, String sql,  Object... args)throws SQLException {
+		HashMap m;
+		if(tx == null)
+			m = sql(sql, args).first(HashMap.class);
+		else
+			m = transaction(tx).sql(sql, args).first(HashMap.class);
 		for (Object value : m.values()) {
 			if(value instanceof  BigDecimal)
 				return ((BigDecimal)value).longValue();
@@ -109,6 +114,18 @@ public class S5Database extends Database
 			logger.error("Unexpected type from DB:{}", value.getClass().getName());
 		}
 		throw new SQLException(String.format("No valid result returned for sql:%s %s", sql, args));
+	}
+	public long queryLongValue(String sql,  Object... args) throws SQLException {
+		return queryLongValue(null, sql, args);
+	}
 
+	public String queryStringValue(String sql,  Object... args) throws SQLException {
+		HashMap m = sql(sql, args).first(HashMap.class);
+		for (Object value : m.values()) {
+			if(value instanceof  String)
+				return (String)value;
+			logger.error("Unexpected type from DB:{}", value.getClass().getName());
+		}
+		throw new SQLException(String.format("No valid result returned for sql:%s %s", sql, args));
 	}
 }
