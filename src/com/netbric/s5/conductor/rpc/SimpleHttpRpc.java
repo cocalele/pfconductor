@@ -18,30 +18,33 @@ public class SimpleHttpRpc {
 	static final Logger logger = LoggerFactory.getLogger(SimpleHttpRpc.class);
 	public static <T extends RestfulReply> T invokeGET(String url, Class<T> replyCls) throws Exception {
 		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-		client.start();
+		try {
+			client.start();
 
-		logger.info("Send request:{}", url);
-		ContentResponse response = client.newRequest(url)
-				.method(org.eclipse.jetty.http.HttpMethod.GET)
-				.send();
-		logger.info("Get response:{}", response.getContentAsString());
-		if(response.getStatus() < 200 || response.getStatus() >= 300)
-		{
-			throw new IOException(String.format("Failed http GET %s, HTTP status:%d, reason:%s",
-					url, response.getStatus(), response.getReason()));
+			logger.info("Send request:{}", url);
+			ContentResponse response = client.newRequest(url)
+					.method(org.eclipse.jetty.http.HttpMethod.GET)
+					.send();
+			logger.info("Get response:{}", response.getContentAsString());
+			if (response.getStatus() < 200 || response.getStatus() >= 300) {
+				throw new IOException(String.format("Failed http GET %s, HTTP status:%d, reason:%s",
+						url, response.getStatus(), response.getReason()));
+			}
+			GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+			Gson gson = builder.create();
+			T r;
+			r = gson.fromJson(new String(response.getContent()), replyCls);
+			client.stop();
+			if (r.retCode == RetCode.OK)
+				logger.info("Succeed http GET {}", url);
+			else {
+				logger.error("Failed http GET {}", url);
+				throw new IOException(String.format("Failed RPC invoke, code:%d, reason:%s", r.retCode, r.reason));
+			}
+			return r;
+		}finally {
+			client.destroy();
 		}
-		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-		Gson gson = builder.create();
-		T r;
-		r = gson.fromJson(new String(response.getContent()), replyCls);
-		client.stop();
-		if(r.retCode == RetCode.OK)
-			logger.info("Succeed http GET {}", url);
-		else {
-			logger.error("Failed http GET {}", url);
-			throw new IOException(String.format("Failed RPC invoke, code:%d, reason:%s", r.retCode, r.reason));
-		}
-		return r;
 	}
 
 	public static <T extends RestfulReply> T invokeStore(String ip, String op, Class<T> replyCls, Object ... args) throws Exception {

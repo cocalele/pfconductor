@@ -52,24 +52,34 @@ public class RebalanceManager {
 		logger.info("Begin move replica: {} from store:{} to store:{} ssd:{}", String.format("0x%x",r.id), r.store_id,targetStore.id, targetSsdUuid);
 		long meta = S5Database.getInstance().queryLongValue("select meta_ver from t_volume where id=?", VolumeIdUtils.replicaToVolumeId(r.id));
 
+		long cnt = S5Database.getInstance().queryLongValue("select count(*) from t_replica where volume_id=? and store_id=?", vol.id, targetStore.id);
+		boolean openedOnTarget = cnt > 0;
 		VolumeHandler.PrepareVolumeArg arg = VolumeHandler.getPrepareArgs(vol);
 		VolumeHandler.ReplicaArg origRep = arg.shards.get(r.getShardIndex()).replicas.get(r.replica_index);
+		VolumeHandler.ShardArg shard = arg.shards.get(r.getShardIndex());
 		VolumeHandler.ReplicaArg targetRep = origRep.clone();
 		targetRep.tray_uuid = targetSsdUuid;
 		targetRep.store_id = targetStore.id;
 		targetRep.status = Status.OK;
 
-
-		VolumeHandler.ShardArg shard = arg.shards.get(r.getShardIndex());
 		shard.replicas.set(r.replica_index, targetRep);
-		VolumeHandler.prepareVolumeOnStore(targetStore, arg);
+		if(!openedOnTarget){
+			VolumeHandler.prepareVolumeOnStore(targetStore, arg);
+
+		} else {
+			arg.shards.clear();
+			arg.shards.add(shard);
+			VolumeHandler.prepareShardsOnStore(targetStore, arg);
+		}
 
 		shard.replicas.set(r.replica_index, origRep); //restore to origin replica
 		targetRep.index = shard.replicas.size();
 		shard.replicas.add(targetRep); //add the extra replica to original master
 
 		StoreNode master = StoreNode.fromId(shard.replicas.get((int)shard.primary_rep_index).store_id);
-		VolumeHandler.prepareVolumeOnStore(master, arg);
+		arg.shards.clear();
+		arg.shards.add(shard);
+		VolumeHandler.prepareShardsOnStore(master, arg);
 
 		RestfulReply reply = SimpleHttpRpc.invokeStore(targetStore.mngtIp, "begin_recovery", RestfulReply.class, "replica_id", r.id);
 		if(reply.retCode != 0) {
@@ -130,6 +140,7 @@ public class RebalanceManager {
 			if(reply.retCode != 0) {
 				throw new LoggedException(logger, "end_recovery on slave node:{} failed, reason:{}", targetStore.mngtIp, reply.reason);
 			}
+
 			Transaction tx = S5Database.getInstance().startTransaction();
 			try{
 				S5Database.getInstance().transaction(tx).sql("select * from t_volume where id=? for update", vol.id); //ensure no other can update meta
@@ -143,6 +154,11 @@ public class RebalanceManager {
 				Volume v2 = Volume.fromId(vol.id);
 				logger.warn("increase volume:{} metaver from {} to {}, for:{}",vol.name, vol.meta_ver, v2.meta_ver, "move replica");
 				tx.commit();
+				arg.meta_ver = v2.meta_ver;
+				shard.replicas.remove(targetRep.index);
+				targetRep.index = r.replica_index;
+				shard.replicas.set(r.replica_index, targetRep);
+				VolumeHandler.prepareShardsOnStore(master, arg);
 				VolumeHandler.pushMetaverToStore(vol);
 				logger.info("Succeeded  move replica: {} from store:{} to store:{} ssd:{}", String.format("0x%x", r.id), r.store_id, targetStore.id, targetSsdUuid);
 			} catch(Exception e) {

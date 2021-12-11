@@ -660,7 +660,16 @@ public class VolumeHandler
 		}
 		return arg;
 	}
+	public static RestfulReply prepareShardsOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
+	{
+		return prepareOnStore("prepare_shards", s, arg);
+	}
+
 	public static RestfulReply prepareVolumeOnStore(StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
+	{
+		return prepareOnStore("prepare_volume", s, arg);
+	}
+	private static RestfulReply prepareOnStore(String op, StoreNode s, VolumeHandler.PrepareVolumeArg arg) throws Exception
 	{
 		arg.op="prepare_volume";
 		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
@@ -671,8 +680,8 @@ public class VolumeHandler
 		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 		try {
 			client.start();
-			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=prepare_volume&name=%s",
-					s.mngtIp, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
+			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=%s&name=%s",
+					s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
 					.method(org.eclipse.jetty.http.HttpMethod.POST)
 					.content(new org.eclipse.jetty.client.util.StringContentProvider(jsonStr), "application/json")
 					.send();
@@ -685,17 +694,20 @@ public class VolumeHandler
 			RestfulReply r = gson.fromJson(new String(response.getContent()), RestfulReply.class);
 			client.stop();
 			if(r.retCode == RetCode.OK)
-				logger.info("Succeed prepare_volume:{} on node:{}", arg.volume_name, s.mngtIp);
+				logger.info("Succeed {}:{} on node:{}", op, arg.volume_name, s.mngtIp);
 			else
-				logger.error("Failed to prepare_volume:{} on node:%s, code:%d, reason:{}", arg.volume_name, s.mngtIp, r.retCode, r.reason);
+				logger.error("Failed to {}:{} on node:%s, code:%d, reason:{}", op, arg.volume_name, s.mngtIp, r.retCode, r.reason);
 			return r;
 		} catch (Exception e) {
 			throw e;
 		}
+		finally {
+			client.destroy();
+		}
 
 	}
 
-	private void markReplicasOnStoreAsError(int storeId, long volumeId)
+	private static void markReplicasOnStoreAsError(int storeId, long volumeId)
 	{
 		S5Database.getInstance().sql("update t_replica set status='ERROR' where volume_id=? and store_id=?", volumeId, storeId).execute();
 	}
@@ -746,7 +758,7 @@ public class VolumeHandler
 		return reply;
 	}
 
-	private PrepareVolumeArg prepareVolume(String tenant_name, String volume_name) throws InvalidParamException, StateException {
+	public static PrepareVolumeArg prepareVolume(String tenant_name, String volume_name) throws InvalidParamException, StateException {
 		boolean need_reprepare;
 		PrepareVolumeArg arg = null;
 		do {
