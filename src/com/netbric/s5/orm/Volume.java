@@ -23,7 +23,7 @@ public class Volume
 	public long size;
 	public int iops;
 	public int cbs;
-	public int bw;
+	public long bw;
 	public String status;
 	@OneToOne
 	@JoinColumn(name = "id")
@@ -35,6 +35,9 @@ public class Volume
 	public long shard_size; //shard size, default 64G
 	public int meta_ver;
 	public int snap_seq;
+	public long features;
+	public static final long FEATURE_AOF = 1; //this volume can only be used as AOF
+
 	public Volume()
 	{
 	};

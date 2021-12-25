@@ -103,7 +103,7 @@ public class S5RestfulHandler extends AbstractHandler
 			if ("handle_error".equals(op)) {
 				reply = errorHandler.handleError(request, response);
 			}
-			else if ("open_volume".equals(op))
+			else if ("open_volume".equals(op) || "open_aof".equals(op))
 				reply = volumeHandler.open_volume(request, response);
 			else if ("add_store".equals(op))
 				reply = storenodeHandler.add_storenode(request, response);
@@ -127,6 +127,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = tenantHandler.listTenant(request, response);
 			else if ("create_volume".equals(op))
 				reply = volumeHandler.create_volume(request, response);
+			else if ("create_aof".equals(op))
+				reply = volumeHandler.create_volume(request, response);
 			else if ("update_volume".equals(op))
 				reply = volumeHandler.update_volume(request, response);
 			else if ("delete_volume".equals(op))
@@ -148,6 +150,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.moveVolume(request, response);
 			else if("scrub_volume".equals(op))
 				reply = volumeHandler.scrubVolume(request, response);
+			else if("check_volume_exists".equals(op))
+				reply = volumeHandler.check_volume_exists(request, response);
 			else
 			{
 				reply = new RestfulReply(op, RetCode.INVALID_OP, "Invalid op:" + op);

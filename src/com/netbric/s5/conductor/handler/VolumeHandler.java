@@ -66,6 +66,7 @@ public class VolumeHandler
 		public int meta_ver;
 		public int snap_seq;
 		public List<ShardArg> shards;
+		public long features;
 	}
 
 	public static class ShardInfoForClient
@@ -201,104 +202,119 @@ public class VolumeHandler
 
 	public RestfulReply create_volume(HttpServletRequest request, HttpServletResponse response)
 	{
-		String[] store_name;
-		store_name = new String[3];
-		int[] store_idx = new int[3];
-		String[] tray_ids = new String[3];
 
 
 		String op = request.getParameter("op");
 		long volume_size = 0;
-		long used_size = 0;
-		long usable_size = 0;
 
-		Volume v = new Volume();
 		Transaction trans = null;
 		try
 		{
-			trans = S5Database.getInstance().startTransaction();
 			String tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
-			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).transaction(trans).first(Tenant.class);
-			if (t == null)
+			String volume_name = Utils.getParamAsString(request, "volume_name");
+			volume_size = Utils.getParamAsLong(request, "size", 4L << 30) ;
+			int  rep_count = Utils.getParamAsInt(request, "rep_cnt", 1);
+			int iops = Utils.getParamAsInt(request, "iops", 8 << 10);
+			long bw = Utils.getParamAsInt(request, "bw", 160 << 20);
+
+			if(rep_count < 1 || rep_count >3)
 			{
-				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
+				return new RestfulReply(op, RetCode.INVALID_ARG,
+						String.format("rep_count:%d is invalid to create volume:%s. validate value shoule be 1,2,3", rep_count, volume_name));
 			}
 
-			String volume_name = Utils.getParamAsString(request, "volume_name");
+			RestfulReply r;
+			if(op.equals("create_volume"))
+				r = do_create_volume(volume_size, tenant_name, volume_name, rep_count, iops, bw, 0);
+			else if(op.equals("create_aof"))
+				r = do_create_volume(volume_size, tenant_name, volume_name, rep_count, iops, bw, Volume.FEATURE_AOF);
+			else
+				return new RestfulReply(op, RetCode.INVALID_ARG, String.format("Invalid OP:%s", op));
+			r.op = op + "_reply";
+			return r;
+		}
+		catch (InvalidParamException e)
+		{
+			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
+		}
+
+	}
+
+	private RestfulReply do_create_volume(long volume_size, String tenant_name, String volume_name, int rep_count, int iops, long bw, long feature)
+	{
+		String[] store_name;
+		store_name = new String[3];
+		int[] store_idx = new int[3];
+		String[] tray_ids = new String[3];
+		long usable_size = 0;
+		Transaction trans = null;
+		try {
+			trans = S5Database.getInstance().startTransaction();
+			long used_size;
+			Volume v = new Volume();
+			v.features = feature;
+			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).transaction(trans).first(Tenant.class);
+			if (t == null) {
+				return new RestfulReply(null, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
+			}
+
 			Volume volume = S5Database.getInstance().table("t_volume")
 					.where("name=? AND tenant_id=?", volume_name, t.id).transaction(trans).first(Volume.class);
-			if (volume != null)
-			{
-				return new RestfulReply(op, RetCode.INVALID_ARG, "volume already exists: " + volume_name);
+			if (volume != null) {
+				return new RestfulReply(null, RetCode.INVALID_ARG, "volume already exists: " + volume_name);
 			}
 
-			volume_size = Utils.getParamAsLong(request, "size", 4L << 30) ;
 
-			if(t.size > 0)
-			{
-			int count = S5Database.getInstance().sql("select count(*) from t_volume where tenant_id=?", t.id).transaction(trans)
-					.first(Long.class).intValue();
+			if (t.size > 0) {
+				int count = S5Database.getInstance().sql("select count(*) from t_volume where tenant_id=?", t.id).transaction(trans)
+						.first(Long.class).intValue();
 
-				if (count != 0)
-				{
+				if (count != 0) {
 					HashMap m = S5Database.getInstance().sql("select sum(size) as used from t_volume where tenant_id=?", t.id).transaction(trans)
-								.first(HashMap.class);
+							.first(HashMap.class);
 					Object o = m.get("used");
-					used_size = ((BigDecimal)o).longValue();
+					used_size = ((BigDecimal) o).longValue();
 					usable_size = t.size - used_size;
 					if (volume_size > usable_size)
-						return new RestfulReply(op, RetCode.INVALID_ARG,
+						return new RestfulReply(null, RetCode.INVALID_ARG,
 								"tenant: " + tenant_name + " has no enough volume capacity to create new volume: "
 										+ volume_name + ", expected: " + volume_size + ", available: " + usable_size);
 				}
 
 				if (volume_size > t.size)
-					return new RestfulReply(op, RetCode.INVALID_ARG,
+					return new RestfulReply(null, RetCode.INVALID_ARG,
 							"tenant: " + tenant_name + " has no enough volume capacity to create new volume: " + volume_name
 									+ ", expected: " + volume_size + ", available: " + usable_size);
 
 			}
 
 			v.id = S5Database.getInstance().queryLongValue("select NEXTVAL(seq_gen)  as val") << 24;
-			v.rep_count = Utils.getParamAsInt(request, "rep_cnt", 1);
-			if(v.rep_count < 1 || v.rep_count >3)
-			{
-				return new RestfulReply(op, RetCode.INVALID_ARG,
-						String.format("rep_count:%d is invalid to create volume:%s. validate value shoule be 1,2,3", v.rep_count, volume_name));
-			}
+			v.rep_count = rep_count;
 			v.name = volume_name;
 			v.size = volume_size;
 			v.shard_size = Config.DEFAULT_SHARD_SIZE;
-			v.iops = Utils.getParamAsInt(request, "iops", 8 << 10);
-			v.bw = Utils.getParamAsInt(request, "bw", 160 << 20);
+			v.iops = iops;
+			v.bw = bw;
 			v.cbs = t.iops * 2;
-			v.tenant_id = (int)t.id;
+			v.tenant_id = (int) t.id;
 			v.status = Status.OK;
 			v.snap_seq = 1;
-			tray_ids[0] = Utils.getParamAsString(request, "tray_0", null);
-			tray_ids[1] = Utils.getParamAsString(request, "tray_1", null);
-			tray_ids[2] = Utils.getParamAsString(request, "tray_2", null);
-			store_name[0] = Utils.getParamAsString(request, "store_0", null);
-			store_name[1] = Utils.getParamAsString(request, "store_1", null);
-			store_name[2] = Utils.getParamAsString(request, "store_2", null);
 			select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
 
 			S5Database.getInstance().transaction(trans).insert(v);
-			long shardCount = (v.size + v.shard_size-1)/v.shard_size;
-			for(int shardIndex = 0; shardIndex<shardCount;shardIndex++)
-			{
+			long shardCount = (v.size + v.shard_size - 1) / v.shard_size;
+			for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
 				Shard shard = new Shard();
-				shard.id=v.id | (shardIndex<<4);
+				shard.id = v.id | (shardIndex << 4);
 				shard.primary_rep_index = 0;
 				shard.volume_id = v.id;
-				shard.status=Status.OK;
+				shard.status = Status.OK;
 				shard.status_time = Timestamp.valueOf(LocalDateTime.now());
 				S5Database.getInstance().insert(shard);
-				for (int i = 0; i < v.rep_count; i++)
-				{
+				for (int i = 0; i < v.rep_count; i++) {
 					Replica r = new Replica();
-					r.id=shard.id | i;
-					r.shard_id =shard.id;
+					r.id = shard.id | i;
+					r.shard_id = shard.id;
 					r.volume_id = v.id;
 					r.store_id = store_idx[i];
 					r.tray_uuid = tray_ids[i];
@@ -308,14 +324,14 @@ public class VolumeHandler
 					S5Database.getInstance().transaction(trans).insert(r);
 				}
 			}
-			trans.commit();;
+			trans.commit();
+			return new CreateVolumeReply(null, v);
 		}
 		catch (InvalidParamException | SQLException e)
 		{
 			trans.rollback();;
-			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
+			return new RestfulReply(null, RetCode.INVALID_ARG, e.getMessage());
 		}
-		return new CreateVolumeReply(op, v);
 	}
 
 	private void select_store(Transaction trans, int replica_count, long volume_size, String[] store_names,
@@ -548,7 +564,7 @@ public class VolumeHandler
 			}
 			nv.iops = iops;
 
-			int bw = 0;
+			long bw = 0;
 			try
 			{
 				bw = Utils.getParamAsInt(request, "bw") * 1024 * 1024;
@@ -641,6 +657,7 @@ public class VolumeHandler
 		arg.meta_ver = vol.meta_ver;
 		arg.snap_seq = vol.snap_seq;
 		arg.shards = new ArrayList<>(arg.shard_count);
+		arg.features = vol.features;
 
 		for(int i=0;i<arg.shard_count;i++)
 		{
@@ -758,16 +775,18 @@ public class VolumeHandler
 		return reply;
 	}
 
-	public static PrepareVolumeArg prepareVolume(String tenant_name, String volume_name) throws InvalidParamException, StateException {
+	public static PrepareVolumeArg prepareVolume(String tenant_name, String volume_name, long feature) throws InvalidParamException, StateException, LoggedException {
 		boolean need_reprepare;
 		PrepareVolumeArg arg = null;
 		do {
 			need_reprepare = false;
 			arg = getPrepareArgs(tenant_name, volume_name);
-
 			if (arg.status == Status.ERROR) {
 				logger.error(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
 				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
+			}
+			if(arg.features != feature)	{
+				throw new LoggedException(logger, "Feature request for volume:%s not match, request:0x%lx volume has:0x%lx", volume_name, feature, arg.features);
 			}
 			List<StoreNode> stores = S5Database.getInstance()
 					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=?)  and status='OK'",
@@ -807,9 +826,13 @@ public class VolumeHandler
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
-			PrepareVolumeArg arg = prepareVolume(tenant_name, volume_name);
+			long feature_request = 0;
+			if(op.equals("open_aof")) {
+				feature_request = Volume.FEATURE_AOF;
+			}
+			PrepareVolumeArg arg = prepareVolume(tenant_name, volume_name, feature_request);
 			volumeId = arg.volume_id;
-		} catch (InvalidParamException | StateException e1) {
+		} catch (InvalidParamException | StateException  e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
 
@@ -920,13 +943,11 @@ public class VolumeHandler
 		String volume_name;
 		String tenant_name;
 
-		Volume v = null;
-
 		try {
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 
-			v = Volume.fromName(tenant_name, volume_name);
+			final Volume v = Volume.fromName(tenant_name, volume_name);
 			if(v == null)
 				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
 			BackgroundTaskManager.BackgroundTask t;
@@ -935,7 +956,7 @@ public class VolumeHandler
 					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
 					new BackgroundTaskManager.TaskExecutor() {
 						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
-							prepareVolume(tenant_name, volume_name);
+							prepareVolume(tenant_name, volume_name, v.features);
 							RecoveryManager.getInstance().recoveryVolume(t);
 						}
 					}, v);
@@ -951,13 +972,11 @@ public class VolumeHandler
 		String volume_name;
 		String tenant_name;
 
-		Volume v = null;
-
 		try {
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 
-			v = Volume.fromName(tenant_name, volume_name);
+			final Volume v = Volume.fromName(tenant_name, volume_name);
 			if(v == null)
 				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
 			BackgroundTaskManager.BackgroundTask t;
@@ -969,7 +988,7 @@ public class VolumeHandler
 			t = BackgroundTaskManager.getInstance().initiateTask(
 					BackgroundTaskManager.TaskType.RECOVERY, "move volume:" + volume_name,
 					t1 -> {
-						prepareVolume(tenant_name, volume_name);
+						prepareVolume(tenant_name, volume_name, v.features);
 						RebalanceManager.getInstance().moveVolume(t1, fromStoreId, fromSsdUuid, targetStoreId, targetSsdUuid);
 					}, v);
 			return new BackgroundTaskReply(op+"_reply", t);
@@ -1120,4 +1139,24 @@ public class VolumeHandler
 
 		}
 	}
+	public RestfulReply check_volume_exists(HttpServletRequest request, HttpServletResponse response)
+	{
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+		try{
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+
+			long v = S5Database.getInstance().queryLongValue("SELECT EXISTS (select v.* from t_volume as v, t_tenant as t where t.id=v.tenant_id and t.name=? and v.name=?)",
+					tenant_name, volume_name);
+			if(v==1)
+				return new RestfulReply(op, RetCode.OK, null);
+			else
+				return new RestfulReply(op, RetCode.VOLUME_NOT_EXISTS, null);
+		} catch (InvalidParamException | SQLException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+		}
+	}
 }
+
