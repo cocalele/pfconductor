@@ -299,6 +299,7 @@ public class VolumeHandler
 			v.tenant_id = (int) t.id;
 			v.status = Status.OK;
 			v.snap_seq = 1;
+			v.features = feature;
 			select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
 
 			S5Database.getInstance().transaction(trans).insert(v);
@@ -306,6 +307,7 @@ public class VolumeHandler
 			for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
 				Shard shard = new Shard();
 				shard.id = v.id | (shardIndex << 4);
+				shard.shard_index = shardIndex;
 				shard.primary_rep_index = 0;
 				shard.volume_id = v.id;
 				shard.status = Status.OK;
@@ -420,13 +422,13 @@ public class VolumeHandler
 			List<HashMap> list = S5Database.getInstance()
 					.sql("select t.store_id,t.tray_uuid,max(t.free_size) as max_tray, "
 							+ "s.free_size as store_free from v_tray_free_size as t,v_store_free_size as s "
-							+ "where t.store_id = s.store_id and t.free_size>=? and t.status='OK' "
-							+ "group by t.store_id order by s.free_size desc limit 3 ", volume_size).transaction(trans)
+							+ "where t.store_id = s.store_id and  t.status='OK' "
+							+ "group by t.store_id order by s.free_size desc limit 3 ").transaction(trans)
 					.results(HashMap.class);
 
 			if (list.size() < replica_count)
 				throw new InvalidParamException("only " + list.size()
-						+ " stores has tray with capacity over " + volume_size + "(byte) but replica is " + replica_count);
+						+ " stores available but replica is " + replica_count);
 
 			// now choose tray for replica
 
@@ -786,7 +788,10 @@ public class VolumeHandler
 				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
 			}
 			if(arg.features != feature)	{
-				throw new LoggedException(logger, "Feature request for volume:%s not match, request:0x%lx volume has:0x%lx", volume_name, feature, arg.features);
+				if(arg.features == Volume.FEATURE_AOF && feature == 0) {
+					logger.warn(String.format("Opening aof:%s as raw volume", volume_name));
+				} else
+					throw new LoggedException(logger, "Feature request for volume:%s not match, request:0x%x volume has:0x%x", volume_name, feature, arg.features);
 			}
 			List<StoreNode> stores = S5Database.getInstance()
 					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=?)  and status='OK'",
@@ -1153,7 +1158,7 @@ public class VolumeHandler
 			if(v==1)
 				return new RestfulReply(op, RetCode.OK, null);
 			else
-				return new RestfulReply(op, RetCode.VOLUME_NOT_EXISTS, null);
+				return new RestfulReply(op, RetCode.VOLUME_NOT_EXISTS, "Volume not exists:" + volume_name);
 		} catch (InvalidParamException | SQLException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
