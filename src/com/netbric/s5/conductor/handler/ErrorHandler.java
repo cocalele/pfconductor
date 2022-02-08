@@ -2,7 +2,7 @@ package com.netbric.s5.conductor.handler;
 
 import com.dieselpoint.norm.DbException;
 import com.dieselpoint.norm.Transaction;
-import com.netbric.s5.conductor.InvalidParamException;
+import com.netbric.s5.conductor.exception.InvalidParamException;
 import com.netbric.s5.conductor.Main;
 import com.netbric.s5.conductor.Utils;
 import com.netbric.s5.conductor.VolumeIdUtils;

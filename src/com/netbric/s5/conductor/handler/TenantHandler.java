@@ -5,7 +5,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.netbric.s5.conductor.InvalidParamException;
+import com.netbric.s5.conductor.exception.InvalidParamException;
 import com.netbric.s5.conductor.rpc.RestfulReply;
 import com.netbric.s5.conductor.rpc.RetCode;
 import com.netbric.s5.conductor.Utils;
@@ -24,7 +24,7 @@ public class TenantHandler
 			t.name = Utils.getParamAsString(request, "tenant_name");
 			Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", t.name).first(Tenant.class);
 			if (tenant != null)
-				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant already exists:" + t.name);
+				return new RestfulReply(op, RetCode.OK, "tenant already exists:" + t.name);
 			t.pass_wd = Utils.getParamAsString(request, "tenant_passwd", "123456");
 			t.size = Utils.getParamAsLong(request, "size", 4194304) * 1024 * 1024;
 			t.iops = Utils.getParamAsInt(request, "iops", 8) * 1024;

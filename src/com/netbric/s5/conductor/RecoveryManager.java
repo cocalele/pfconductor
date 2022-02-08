@@ -1,5 +1,6 @@
 package com.netbric.s5.conductor;
 
+import com.netbric.s5.conductor.exception.StateException;
 import com.netbric.s5.conductor.handler.VolumeHandler;
 import com.netbric.s5.conductor.rpc.BackgroundTaskReply;
 import com.netbric.s5.conductor.rpc.RestfulReply;

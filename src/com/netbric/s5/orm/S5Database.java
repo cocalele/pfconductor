@@ -2,9 +2,6 @@ package com.netbric.s5.orm;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLDataException;
 import java.sql.SQLException;
 import java.util.HashMap;
 
@@ -12,8 +9,7 @@ import javax.sql.DataSource;
 
 import com.dieselpoint.norm.Transaction;
 import com.dieselpoint.norm.sqlmakers.MySqlMaker;
-import com.netbric.s5.conductor.ConfigException;
-import org.apache.commons.lang3.SystemUtils;
+import com.netbric.s5.conductor.exception.ConfigException;
 
 import com.dieselpoint.norm.Database;
 import com.zaxxer.hikari.HikariConfig;

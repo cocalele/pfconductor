@@ -3,6 +3,7 @@ package com.netbric.s5.conductor;
 import java.io.File;
 import java.io.IOException;
 
+import com.netbric.s5.conductor.exception.ConfigException;
 import org.ini4j.Wini;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class Config
 			System.exit(1);
 		}
 	}
-	public String getString(String section, String key, String defaultVal, boolean mandatory) throws  ConfigException
+	public String getString(String section, String key, String defaultVal, boolean mandatory) throws ConfigException
 	{
 		String rst = cfg.get(section, key, String.class);
 		if(rst != null)

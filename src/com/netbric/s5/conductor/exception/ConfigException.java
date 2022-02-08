@@ -1,4 +1,4 @@
-package com.netbric.s5.conductor;
+package com.netbric.s5.conductor.exception;
 
 /**
  * Created by liulele on 2019/11/24.

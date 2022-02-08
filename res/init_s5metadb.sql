@@ -44,19 +44,18 @@ drop table  if exists t_snapshot;
 -- car id from 0 ~ 63 is reserved for special usage, and will not be set to rge.
 -- 
 create table t_tenant(
-	id integer primary key not null, 
-	car_id integer not null, 
+	id integer primary key AUTO_INCREMENT,
+	car_id integer ,
 	name varchar(96) unique not null, 
 	pass_wd varchar(256) not null, 
 	auth int not null, 
 	size bigint not null, 
 	iops int not null, 
 	cbs int not null, 
-	bw int not null);
+	bw int not null)ENGINE=InnoDB AUTO_INCREMENT=65;
 
-
-insert into t_tenant(id, car_id, name, pass_wd, auth, size, iops, cbs, bw) values(0, 0, 'tenant_default', '123456', -1, 0, 0, 0, 0);
-insert into t_tenant(id, car_id, name, pass_wd, auth, size, iops, cbs, bw) values(1, 0, 'system_sp_tenant', '123456', -1, 0, 0, 0, 0);
+insert into t_tenant(id, car_id, name, pass_wd, auth, size, iops, cbs, bw) values(1, 0, 'tenant_default', '123456', -1, 0, 0, 0, 0);
+insert into t_tenant(id, car_id, name, pass_wd, auth, size, iops, cbs, bw) values(2, 0, 'system_sp_tenant', '123456', -1, 0, 0, 0, 0);
 
 -- init administrator (id for administrator starts from 32 to 63)
 insert into t_tenant(id, car_id, name, pass_wd, auth, size, iops, cbs, bw) values(32, -1, 'admin', '123456', 1, 0, 0, 0, 0);
@@ -71,7 +70,7 @@ create table t_quotaset(
 	tenant_id integer not null, 
 	foreign key (tenant_id) references t_tenant(id));
 
-insert into t_quotaset(id, car_id, name, iops, cbs, bw, tenant_id) values(65, 1, 'quotaset_default', 0, 0, 0, 0);
+insert into t_quotaset(id, car_id, name, iops, cbs, bw, tenant_id) values(65, 1, 'quotaset_default', 0, 0, 0, 1);
 
 create table t_store(
 	id integer primary key, 
@@ -138,7 +137,7 @@ create table t_tray(
 	foreign key (store_id) references t_store(id));
 
 create table t_replica(
-	id bigint primary key AUTO_INCREMENT , 
+	id bigint primary key not null ,
 	replica_index int not null,
 	volume_id bigint  not null,
 	shard_id bigint not null,

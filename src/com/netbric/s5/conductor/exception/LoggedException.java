@@ -1,4 +1,4 @@
-package com.netbric.s5.conductor;
+package com.netbric.s5.conductor.exception;
 
 public class LoggedException extends StateException {
 	public LoggedException(org.slf4j.Logger log, String format, Object... args)  {

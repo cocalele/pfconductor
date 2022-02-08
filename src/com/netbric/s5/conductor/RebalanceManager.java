@@ -1,6 +1,7 @@
 package com.netbric.s5.conductor;
 
 import com.dieselpoint.norm.Transaction;
+import com.netbric.s5.conductor.exception.LoggedException;
 import com.netbric.s5.conductor.handler.VolumeHandler;
 import com.netbric.s5.conductor.rpc.BackgroundTaskReply;
 import com.netbric.s5.conductor.rpc.RestfulReply;

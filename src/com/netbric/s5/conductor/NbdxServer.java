@@ -1,14 +1,10 @@
 package com.netbric.s5.conductor;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.exec.ExecuteException;
-import org.apache.commons.lang3.ArrayUtils;
+import com.netbric.s5.conductor.exception.OperateException;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,13 +1,12 @@
 package com.netbric.s5.cluster;
 import com.netbric.s5.conductor.Config;
-import com.netbric.s5.conductor.ConfigException;
+import com.netbric.s5.conductor.exception.ConfigException;
 import org.apache.zookeeper.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Semaphore;

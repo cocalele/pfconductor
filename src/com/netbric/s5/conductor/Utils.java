@@ -2,6 +2,7 @@ package com.netbric.s5.conductor;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.netbric.s5.conductor.exception.InvalidParamException;
 import org.apache.commons.lang3.StringUtils;
 
 public class Utils

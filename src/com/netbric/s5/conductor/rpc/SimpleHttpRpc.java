@@ -5,7 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.netbric.s5.cluster.ZkHelper;
 import com.netbric.s5.conductor.Config;
-import com.netbric.s5.conductor.InvalidParamException;
+import com.netbric.s5.conductor.exception.InvalidParamException;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

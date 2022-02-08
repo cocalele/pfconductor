@@ -1,6 +1,5 @@
-package com.netbric.s5.conductor;
+package com.netbric.s5.conductor.handler;
 
-import com.dieselpoint.norm.Query;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -17,8 +16,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class DebugHandler extends AbstractHandler
 {

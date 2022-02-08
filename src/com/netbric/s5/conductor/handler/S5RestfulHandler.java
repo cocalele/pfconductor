@@ -1,12 +1,9 @@
-package com.netbric.s5.conductor;
+package com.netbric.s5.conductor.handler;
 
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.netbric.s5.conductor.handler.ErrorHandler;
-import com.netbric.s5.conductor.handler.StoreHandler;
-import com.netbric.s5.conductor.handler.TenantHandler;
-import com.netbric.s5.conductor.handler.VolumeHandler;
+import com.netbric.s5.conductor.SnapshotManager;
 import com.netbric.s5.conductor.rpc.RestfulReply;
 import com.netbric.s5.conductor.rpc.RetCode;
 import com.netbric.s5.orm.S5Database;
@@ -17,7 +14,6 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;

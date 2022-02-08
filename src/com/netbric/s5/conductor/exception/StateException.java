@@ -1,4 +1,4 @@
-package com.netbric.s5.conductor;
+package com.netbric.s5.conductor.exception;
 
 public class StateException extends Exception{
 

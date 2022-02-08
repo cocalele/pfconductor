@@ -7,8 +7,18 @@ fi
 
 if [ `uname` = Linux ]; then
 	JCROOT=$DIR
-	java -classpath "$JCROOT/out/production/jconductor:$JCROOT/lib/*"  -Dorg.slf4j.simpleLogger.defaultLogLevel=ERROR com.netbric.s5.cli.CliMain $*
+	if [ -f "$JCROOT/run-all.sh" ]; then
+	  #means work in docker image
+	  CPATH="$JCROOT/jconductor:$JCROOT/jconductor/lib/*"
+	else
+	  #means work in develope mode
+	  CPATH="$JCROOT/out/production/jconductor:$JCROOT/lib/*"
+	fi
+	java -classpath "$CPATH"  -Dorg.slf4j.simpleLogger.defaultLogLevel=ERROR com.netbric.s5.cli.CliMain $*
 else
 	JCROOT=. 
 	java -classpath "$JCROOT/out/production/jconductor;$JCROOT/lib/*"  -Dorg.slf4j.simpleLogger.defaultLogLevel=ERROR com.netbric.s5.cli.CliMain $*
 fi
+
+# run pfcli in release image
+#java -classpath "$JCROOT:$JCROOT/lib/*"  -Dorg.slf4j.simpleLogger.defaultLogLevel=ERROR com.netbric.s5.cli.CliMain -c /etc/pureflash/pf.conf $*

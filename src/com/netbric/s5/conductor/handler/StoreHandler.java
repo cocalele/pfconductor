@@ -11,7 +11,7 @@ import com.netbric.s5.conductor.rpc.ListStoreReply;
 import com.netbric.s5.orm.Port;
 import org.apache.commons.lang3.StringUtils;
 
-import com.netbric.s5.conductor.InvalidParamException;
+import com.netbric.s5.conductor.exception.InvalidParamException;
 import com.netbric.s5.conductor.rpc.RestfulReply;
 import com.netbric.s5.conductor.rpc.RetCode;
 import com.netbric.s5.conductor.SshExec;
