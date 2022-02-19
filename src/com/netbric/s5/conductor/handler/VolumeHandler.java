@@ -467,6 +467,40 @@ public class VolumeHandler
 		public String tray_uuid;
 		public String mngt_ip;
 	}
+
+	private int do_delete_volume(String tenant_name, String volume_name) throws InvalidParamException {
+		Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
+		if (tenant == null)
+			throw new InvalidParamException("tenant not exists: " + tenant_name);
+
+		Volume volume = S5Database.getInstance().table("t_volume").where("name=? and tenant_id=?",
+				volume_name, tenant.id).first(Volume.class);
+		if (volume == null)
+			throw new InvalidParamException("volume not exists: " + volume_name);
+
+		logger.info("Deleting volume {}:{}", tenant_name, volume_name);
+
+		int t_idx = (int)tenant.id;
+		List<TempRep> replicas = S5Database.getInstance().sql("select r.id replica_id, r.tray_uuid, s.mngt_ip " +
+				"from t_replica r, t_store s where r.store_id=s.id and r.volume_id=?", volume.id).results(TempRep.class);
+		for(TempRep r : replicas) {
+			logger.info("Deleting replica:{} on store:{} disk:{}",  Long.toHexString(r.replica_id), r.mngt_ip, r.tray_uuid);
+			try {
+				SimpleHttpRpc.invokeStore(r.mngt_ip, "delete_replica", RestfulReply.class, "replica_id", r.replica_id,
+						"ssd_uuid", r.tray_uuid);
+			} catch (Exception e1) {
+				logger.error("Failed delete replica:{}, {}", Long.toHexString(r.replica_id), e1);
+			}
+		}
+		int rowaffected = S5Database.getInstance()
+				.sql("delete from t_replica where t_replica.volume_id in (select t_volume.id from t_volume where name='"
+						+ volume_name + "' and tenant_id=" + t_idx + ")")
+				.execute().getRowsAffected();
+		int r = S5Database.getInstance().table("t_volume").where("name=? AND tenant_id=?", volume_name, t_idx).delete()
+				.getRowsAffected();
+		logger.info("Volume {} deleted, {} replicas deleted on store node", volume_name, rowaffected);
+		return r;
+	}
 	public RestfulReply delete_volume(HttpServletRequest request, HttpServletResponse response)
 	{
 
@@ -476,82 +510,61 @@ public class VolumeHandler
 		String op = request.getParameter("op");
 		String tenant_name = null;
 		String volume_name = null;
-		int t_idx = 0;
+		int r = 0;
 		try
 		{
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
-			Tenant tenant = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
-			if (tenant == null)
-				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
-
 			volume_name = Utils.getParamAsString(request, "volume_name");
-			Volume volume = S5Database.getInstance().table("t_volume").where("name=? and tenant_id=?",
-					volume_name, tenant.id).first(Volume.class);
-			if (volume == null)
-				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists: " + volume_name);
-
-
-			t_idx = (int)tenant.id;
-			List<TempRep> replicas = S5Database.getInstance().sql("select r.id replica_id, r.tray_uuid, s.mngt_ip " +
-					"from t_replica r, t_store s where r.store_id=s.id and r.volume_id=?", volume.id).results(TempRep.class);
-			for(TempRep r : replicas) {
-				logger.info("Deleteing replica:{} on store:{} disk:{}",  Long.toHexString(r.replica_id), r.mngt_ip, r.tray_uuid);
-				try {
-					SimpleHttpRpc.invokeStore(r.mngt_ip, "delete_replica", RestfulReply.class, "replica_id", r.replica_id,
-							"ssd_uuid", r.tray_uuid);
-				} catch (Exception e1) {
-					logger.error("Failed delete replica:{}, {}", Long.toHexString(r.replica_id), e1);
-				}
-			}
+			r= do_delete_volume(tenant_name, volume_name);
 		}
 		catch (InvalidParamException e)
 		{
 			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
 		}
-		int rowaffected = S5Database.getInstance()
-				.sql("delete from t_replica where t_replica.volume_id in (select t_volume.id from t_volume where name='"
-						+ volume_name + "' and tenant_id=" + t_idx + ")")
-				.execute().getRowsAffected();
-		int r = S5Database.getInstance().table("t_volume").where("name=? AND tenant_id=?", volume_name, t_idx).delete()
-				.getRowsAffected();
-		if (r == 1)
-			return new RestfulReply(op);
-		return new RestfulReply(op, RetCode.INVALID_ARG, "Deleted volumes:" + r + "delete replica" + rowaffected);
+
+		return new RestfulReply(op, RetCode.OK, "Deleted volumes:" + r );
 	}
 
 	public RestfulReply update_volume(HttpServletRequest request, HttpServletResponse response)
 	{
 
-		Volume nv = null;
 		String volume_name = null;
-		boolean DataLost = false;
 
 		String op = request.getParameter("op");
+		Transaction tx = null;
 		try
 		{
-			String tenant_name = Utils.getParamAsString(request, "tenant_name");
+			String tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).first(Tenant.class);
 			if (t == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "tenant not exists:" + tenant_name);
-
-			int idx = (int)t.id;
-
+			
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			Volume volume = S5Database.getInstance().table("t_volume").where("name=?", volume_name).first(Volume.class);
 			if (volume == null)
 				return new RestfulReply(op, RetCode.INVALID_ARG, "volume not exists:" + volume_name);
 
-			nv = S5Database.getInstance().table("t_volume").where("name=? AND tenant_id=?", volume_name, idx)
-					.first(Volume.class);
-			nv.name = Utils.getParamAsString(request, "new_volume_name", nv.name);
+			String new_volume_name = Utils.getParamAsString(request, "new_volume_name", volume_name);
+			if(!volume_name.equals(new_volume_name)){
+				logger.info("rename_volume {} to {}", volume_name, new_volume_name);
+				Volume target_volume = S5Database.getInstance().table("t_volume").where("name=?", new_volume_name).first(Volume.class);
+				if (target_volume != null) {
+					logger.info("target volume {} existing, will be deleted", new_volume_name);
+					do_delete_volume(tenant_name, new_volume_name);
+				}
 
+			}
 			long size = 0;
+			tx=S5Database.getInstance().startTransaction();
 
+			Volume nv = S5Database.getInstance().transaction(tx).sql("select * from t_volume where name=? and tenant_id=? for update ", volume_name, t.id)
+					.first(Volume.class);
+			nv.name = new_volume_name;
 			try
 			{
 				size = Utils.getParamAsLong(request, "size") * 1024 * 1024;
 				if (size < nv.size)
-					DataLost = true;
+					return new RestfulReply(op, RetCode.OK, "the date may be lost");
 			}
 			catch (Exception e)
 			{
@@ -582,16 +595,20 @@ public class VolumeHandler
 
 			nv.bw = bw;
 			nv.cbs = 2 * iops;
+			S5Database.getInstance().transaction(tx).update(nv);
+			tx.commit();
+			tx=null;
 		}
 		catch (InvalidParamException e)
 		{
 			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
+		} finally {
+			if(tx != null)
+				tx.rollback();
+
 		}
-		S5Database.getInstance().update(nv);
-		if (DataLost == true)
-			return new RestfulReply(op, RetCode.OK, "the date may be lost");
-		else
-			return new RestfulReply(op);
+
+		return new RestfulReply(op);
 	}
 
 	static class ListVolumeReply  extends RestfulReply

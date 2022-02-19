@@ -92,7 +92,7 @@ public class S5RestfulHandler extends AbstractHandler
 		response.setStatus(HttpServletResponse.SC_OK);
 		String op = request.getParameter("op");
 		//String fmt = Utils.getParamAsString(request, "fmt", "json");
-		logger.debug("API called: op={}", op);
+		logger.info("API called: op={}", request.getQueryString());
 		RestfulReply reply;
 		try
 		{
@@ -148,6 +148,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.scrubVolume(request, response);
 			else if("check_volume_exists".equals(op))
 				reply = volumeHandler.check_volume_exists(request, response);
+			else if("ls_children".equals(op))
+				reply = AofHandler.ls_children(request, response);
 			else
 			{
 				reply = new RestfulReply(op, RetCode.INVALID_OP, "Invalid op:" + op);
