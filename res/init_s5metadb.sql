@@ -153,11 +153,13 @@ create table t_snapshot(
     size bigint not null, -- size of volume when snapshot created
     created datetime not null default current_timestamp
 );
-create view v_store_alloc_size as  select store_id, sum(size) as alloc_size from t_volume, t_replica where t_volume.id=t_replica.volume_id group by t_replica.store_id;
-create view v_store_total_size as  select store_id, sum(t.raw_capacity) as total_size from t_tray as t where t.status="OK" group by t.store_id;
-create view v_store_free_size as select t.store_id, t.total_size, COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size 
- from v_store_total_size as t left join v_store_alloc_size as a on t.store_id=a.store_id order by free_size desc;
-create view v_tray_alloc_size as select  t_replica.store_id as store_id, tray_uuid, sum(size) as alloc_size from t_volume, t_replica where t_volume.id = t_replica.volume_id group by t_replica.tray_uuid , t_replica.store_id;	
+create view v_store_alloc_size as  select store_id, sum(t_volume.shard_size) as alloc_size from t_volume, t_replica where t_volume.id=t_replica.volume_id group by t_replica.store_id;
+
+create view v_store_total_size as  select s.id as store_id, sum(t.raw_capacity) as total_size from t_tray as t, t_store as s where t.status="OK" and t.store_id=s.id group by store_id;
+
+create view v_store_free_size as select t.store_id, t.total_size, COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size , t_store.status  from t_store, v_store_total_size as t left join v_store_alloc_size as a on t.store_id=a.store_id where t_store.id=t.store_id order by free_size desc;
+
+create view v_tray_alloc_size as select  t_replica.store_id as store_id, tray_uuid, sum(t_volume.shard_size) as alloc_size from t_volume, t_replica where t_volume.id = t_replica.volume_id group by t_replica.tray_uuid , t_replica.store_id;	
 create view v_tray_total_size as select store_id, uuid as tray_uuid, raw_capacity as total_size, status from t_tray;
 create view v_tray_free_size as select t.store_id as store_id, t.tray_uuid as tray_uuid, t.total_size as total_size,
  COALESCE(a.alloc_size,0) as alloc_size , t.total_size-COALESCE(a.alloc_size,0) as free_size, t.status as status from v_tray_total_size as t left join v_tray_alloc_size as a on t.store_id=a.store_id and t.tray_uuid=a.tray_uuid order by free_size desc;

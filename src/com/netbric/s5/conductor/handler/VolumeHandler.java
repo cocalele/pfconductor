@@ -91,7 +91,7 @@ public class VolumeHandler
 		public int meta_ver;
 		public int snap_seq;
 		public ShardInfoForClient[] shards;
-
+		public int shard_lba_cnt_order;
 		public OpenVolumeReply(String op, int retCode, String reason) {
 			super(op, retCode, reason);
 		}
@@ -246,10 +246,6 @@ public class VolumeHandler
 
 	private RestfulReply do_create_volume(long volume_size, String tenant_name, String volume_name, int rep_count, int iops, long bw, long feature)
 	{
-		String[] store_name;
-		store_name = new String[3];
-		int[] store_idx = new int[3];
-		String[] tray_ids = new String[3];
 		long usable_size = 0;
 		Transaction trans = null;
 		try {
@@ -304,7 +300,6 @@ public class VolumeHandler
 			v.status = Status.OK;
 			v.snap_seq = 1;
 			v.features = feature;
-			select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
 
 			S5Database.getInstance().transaction(trans).insert(v);
 			long shardCount = (v.size + v.shard_size - 1) / v.shard_size;
@@ -317,6 +312,10 @@ public class VolumeHandler
 				shard.status = Status.OK;
 				shard.status_time = Timestamp.valueOf(LocalDateTime.now());
 				S5Database.getInstance().insert(shard);
+				String[] store_name = new String[3];
+				int[] store_idx = new int[3];
+				String[] tray_ids = new String[3];
+				select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
 				for (int i = 0; i < v.rep_count; i++) {
 					Replica r = new Replica();
 					r.id = shard.id | i;
@@ -423,11 +422,17 @@ public class VolumeHandler
 			// 2. max(t.free_size) , get the tray with most space
 			// 3. group by store_id, each store to get one record
 			// 4. order by s.free_size desc, order s5 store by its free size
+//			List<HashMap> list = S5Database.getInstance()
+//					.sql("select t.store_id,t.tray_uuid,max(t.free_size) as max_tray, "
+//							+ "s.free_size as store_free from v_tray_free_size as t,v_store_free_size as s "
+//							+ "where t.store_id = s.store_id and  t.status='OK' "
+//							+ "group by t.store_id order by max_tray desc limit 3 ").transaction(trans)
+//					.results(HashMap.class);
+
 			List<HashMap> list = S5Database.getInstance()
-					.sql("select t.store_id,t.tray_uuid,max(t.free_size) as max_tray, "
-							+ "s.free_size as store_free from v_tray_free_size as t,v_store_free_size as s "
-							+ "where t.store_id = s.store_id and  t.status='OK' "
-							+ "group by t.store_id order by s.free_size desc limit 3 ").transaction(trans)
+					.sql("select * from v_store_free_size as s "
+							+ "where s.status='OK' "
+							+ " order by free_size desc limit ? ", replica_count).transaction(trans)
 					.results(HashMap.class);
 
 			if (list.size() < replica_count)
@@ -440,7 +445,15 @@ public class VolumeHandler
 			{
 				HashMap h = list.get(i);
 				store_ids[i] = (int) h.get("store_id");
-				tray_ids[i] = (String) h.get("tray_uuid");
+				List<HashMap> tray_list = S5Database.getInstance()
+						.sql("select * from v_tray_free_size as t "
+								+ " where t.status='OK' and t.store_id=? "
+								+ " order by free_size desc ", store_ids[i]).transaction(trans)
+						.results(HashMap.class);
+				if (tray_list.size() < 1)
+					throw new InvalidParamException("Can't select a tray on store " + store_ids[i]);
+				HashMap tray = tray_list.get(0);
+				tray_ids[i] = (String) tray.get("tray_uuid");
 
 			}
 		}
@@ -794,6 +807,8 @@ public class VolumeHandler
 		reply.meta_ver = v.meta_ver;
 		reply.snap_seq = v.snap_seq;
 		reply.shards = new ShardInfoForClient[shards.size()];
+		reply.shard_lba_cnt_order = 36;
+		assert(v.shard_size == 1L<<reply.shard_lba_cnt_order);
 		shards.toArray(reply.shards);
 		return reply;
 	}
