@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
@@ -56,7 +57,14 @@ public class ZkHelper {
 			}
 		}
 	}
-	public void watchNewChild(String parentPath, NewChildCallback cbk){
+
+	static Hashtable<String, String> watchedNodes = new Hashtable<>();
+	public synchronized void watchNewChild(String parentPath, NewChildCallback cbk){
+		if(watchedNodes.containsKey(parentPath)){
+			logger.warn("{} already in watch", parentPath);
+			return;
+		}
+		watchedNodes.put(parentPath, "N");
 		new Thread(()->{
 			try {
 				Semaphore s = new Semaphore(0);
@@ -64,8 +72,10 @@ public class ZkHelper {
 				while (true) {
 					s.acquire();
 					List<String> children = zk.getChildren(parentPath, new ZkWatcher(s));
+					logger.info("New node under parent:{} total {} nodes", parentPath, children.size());
 					HashSet<String> origin = new HashSet<>(children2);
 					for (String node : children) {
+						logger.info("Checking node:{}", node);
 						if (!origin.contains(node)) {
 							String newNode = parentPath + "/" + node;
 							logger.info("New node found from zk:{}", newNode);
@@ -82,7 +92,12 @@ public class ZkHelper {
 	}
 
 
-	public  void watchNode(String nodePath, NodeChangeCallback cbk) {
+	public synchronized void watchNode(String nodePath, NodeChangeCallback cbk) {
+		if(watchedNodes.containsKey(nodePath)){
+			logger.warn("{} already in watch", nodePath);
+			return;
+		}
+		watchedNodes.put(nodePath, "C");
 		new Thread(()->{
 			try {
 				Semaphore s = new Semaphore(0);
