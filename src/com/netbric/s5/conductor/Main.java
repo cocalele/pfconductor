@@ -2,6 +2,7 @@ package com.netbric.s5.conductor;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
 
 import com.netbric.s5.conductor.handler.DebugHandler;
 import com.netbric.s5.conductor.handler.S5RestfulHandler;
@@ -10,9 +11,12 @@ import com.netbric.s5.orm.S5Database;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.ContextHandlerCollection;
+import org.eclipse.jetty.util.thread.ExecutorThreadPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +85,16 @@ public class Main
 			// Start the server
 			httpServer = new Server(49180);
 			// Add a single handler on context "/hello"
+
+			//not works
+//			ExecutorThreadPool tp = new ExecutorThreadPool(8, 32, 60L, TimeUnit.SECONDS);
+//			httpServer = new Server(tp);
+//			ServerConnector connector = new ServerConnector(httpServer);
+//			connector.setPort(49180);
+//			httpServer.setConnectors(new Connector[]{connector});
+
+
+
 			ContextHandler context = new ContextHandler();
 			context.setContextPath("/s5c");
 			context.setHandler(new S5RestfulHandler());

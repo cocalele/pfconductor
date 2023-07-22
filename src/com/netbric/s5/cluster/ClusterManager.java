@@ -175,6 +175,8 @@ public class ClusterManager
 	{
 		try {
 			String trayOnZk = zkBaseDir + "/stores/"+store_id+"/trays";
+
+			logger.info("watchNewChild on: {} ", trayOnZk);
 			zkHelper.watchNewChild(trayOnZk, new ZkHelper.NewChildCallback() {
 				@Override
 				void onNewChild(String childPath) {

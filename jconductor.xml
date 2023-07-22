@@ -305,7 +305,9 @@
   
   <target name="clean" depends="clean.module.jconductor" description="cleanup all"/>
   
-  <target name="build.modules" depends="init, clean, compile.module.jconductor" description="build all modules"/>
-  
+  <target name="compress" depends="compile.module.jconductor.production">
+     <jar destfile="./pfconductor.jar" basedir="${jconductor.output.dir}" />
+  </target>  
+  <target name="build.modules" depends="init, clean, compile.module.jconductor, compress" description="build all modules"/>
   <target name="all" depends="build.modules" description="build all"/>
 </project>

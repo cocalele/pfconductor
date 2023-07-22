@@ -13,6 +13,7 @@ import com.netbric.s5.conductor.exception.StateException;
 import com.netbric.s5.conductor.rpc.*;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,12 +22,21 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.Authenticator;
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class VolumeHandler
 {
@@ -732,6 +742,8 @@ public class VolumeHandler
 		logger.info("Prepare volume:{} on node:{}, {}", arg.volume_name, s.mngtIp, jsonStr);
 		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 		try {
+
+//#if use Jetty http
 			client.start();
 			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=%s&name=%s",
 					s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
@@ -746,6 +758,30 @@ public class VolumeHandler
 			}
 			RestfulReply r = gson.fromJson(new String(response.getContent()), RestfulReply.class);
 			client.stop();
+
+//#else use java buildin http
+//			java.net.http.HttpClient client = HttpClient.newBuilder()
+//					.version(HttpClient.Version.HTTP_1_1)
+//					.followRedirects(HttpClient.Redirect.NORMAL)
+//					.connectTimeout(Duration.ofSeconds(20))
+//					.executor(new ThreadPoolExecutor(2, 16, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32)))
+//					.build();
+//			HttpRequest request = HttpRequest.newBuilder()
+//					.uri(URI.create(String.format("http://%s:49181/api?op=%s&name=%s",
+//							s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString()))))
+//					.header("Content-Type", "application/json; charset=UTF-8")
+//					.POST(HttpRequest.BodyPublishers.ofString(jsonStr))
+//					.build();
+//			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+//
+//			logger.info("Get response:{}", response.body());
+//			if(response.statusCode() < 200 || response.statusCode() >= 300)
+//			{
+//				throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d",
+//						arg.volume_name, s.mngtIp, response.statusCode()));
+//			}
+//			RestfulReply r = gson.fromJson(new String(response.body()), RestfulReply.class);
+//end
 			if(r.retCode == RetCode.OK)
 				logger.info("Succeed {}:{} on node:{}", op, arg.volume_name, s.mngtIp);
 			else
@@ -806,6 +842,7 @@ public class VolumeHandler
 		reply.status = v.status;
 		reply.meta_ver = v.meta_ver;
 		reply.snap_seq = v.snap_seq;
+		reply.shard_count = shards.size();
 		reply.shards = new ShardInfoForClient[shards.size()];
 		reply.shard_lba_cnt_order = 36;
 		assert(v.shard_size == 1L<<reply.shard_lba_cnt_order);
