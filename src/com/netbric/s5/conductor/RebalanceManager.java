@@ -55,7 +55,7 @@ public class RebalanceManager {
 
 		long cnt = S5Database.getInstance().queryLongValue("select count(*) from t_replica where volume_id=? and store_id=?", vol.id, targetStore.id);
 		boolean openedOnTarget = cnt > 0;
-		VolumeHandler.PrepareVolumeArg arg = VolumeHandler.getPrepareArgs(vol);
+		VolumeHandler.PrepareVolumeArg arg = VolumeHandler.getPrepareArgs(vol, null);
 		VolumeHandler.ReplicaArg origRep = arg.shards.get(r.getShardIndex()).replicas.get(r.replica_index);
 		VolumeHandler.ShardArg shard = arg.shards.get(r.getShardIndex());
 		VolumeHandler.ReplicaArg targetRep = origRep.clone();

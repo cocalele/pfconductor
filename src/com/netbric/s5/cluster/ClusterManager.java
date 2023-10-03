@@ -2,9 +2,10 @@ package com.netbric.s5.cluster;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 
-import com.dieselpoint.norm.Query;
 import com.netbric.s5.orm.*;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -16,6 +17,7 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.commons.lang3.StringUtils;
 
 public class ClusterManager
 {
@@ -34,6 +36,8 @@ public class ClusterManager
 	public static final String defaultClusterName = "cluster1";
 	public static String myZkNodePath;
 	public static String mngtIp;
+	public static Hashtable<String, Tray> allTray = new Hashtable<>(257);
+	public static Hashtable<String, SharedDisk> allSharedDisk = new Hashtable<>(257);
 
 	public static void registerAsConductor(String managmentIp, String zkIp) throws Exception
 	{
@@ -139,6 +143,7 @@ public class ClusterManager
 			{
 				updateStoreFromZk(Integer.parseInt(n));
 			}
+			validateStores();
 		} catch (KeeperException | InterruptedException e) {
 			logger.error("Failed access zk",e);
 		}
@@ -158,9 +163,9 @@ public class ClusterManager
 
 		try {
 			if(zk.exists(zkBaseDir + "/stores/"+id+"/alive", false) == null)
-				n.status = StoreNode.STATUS_OFFLINE;
+				n.status = Status.OFFLINE;
 			else
-				n.status = StoreNode.STATUS_OK;
+				n.status = Status.OK;
 		} catch (KeeperException |InterruptedException e) {
 			logger.error("Failed update store from ZK:", e);
 		}
@@ -218,7 +223,7 @@ public class ClusterManager
 					S5Database.getInstance().insert(tr);
 				else
 					S5Database.getInstance().update(tr);
-
+				allTray.put(tr.uuid, tr);
 			}
 		} catch (KeeperException | InterruptedException e) {
 			logger.error("Failed update tray from zk",e);
@@ -298,8 +303,114 @@ public class ClusterManager
 	 * 
 	 * @return
 	 */
-	public List<StoreNode> getAliveStore()
+	static public List<StoreNode> getAliveStore()
 	{
+		return S5Database.getInstance().where("status=?", Status.ONLINE).results(StoreNode.class);
+	}
+
+	static public void validateStores()
+	{
+		List<StoreNode> stores = getAliveStore();
+		HashMap<String, StoreNode> existing = new HashMap<>();
+		for(StoreNode n : stores) {
+			if(existing.containsKey(n.mngtIp)) {
+				StoreNode old = existing.get(n.mngtIp);
+				logger.error("Managment IP:{} duplicated for store node id:{} and {}", n.mngtIp, n.id, old.id);
+			} else {
+				existing.put(n.mngtIp, n);
+			}
+		}
+
+	}
+
+	public static void watchSharedDisks()
+	{
+
+		zkHelper.watchNewChild(zkBaseDir + "/shared_disks", new ZkHelper.NewChildCallback() {
+			@Override
+			void onNewChild(String childPath) {
+				logger.info("new shared disk found on zk: {}", childPath);
+				try {
+					updateSharedDiskFromZk(childPath.substring(childPath.lastIndexOf('/')+1, childPath.length()));
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+			}
+		});
+
+	}
+	public static void updateSharedDisksFromZk()
+	{
+		try {
+			List<String> diskUuids = zk.getChildren(zkBaseDir + "/shared_disks", null);
+			for(String id : diskUuids) {
+				updateSharedDiskFromZk(id);
+			}
+		} catch (KeeperException | InterruptedException e) {
+			logger.error("Failed access zk",e);
+		}
+
+	}
+
+	public static void updateSharedDiskFromZk(String uuid) throws InterruptedException {
+
+		String diskPath = zkBaseDir + "/shared_disks/"+uuid;
+
+		byte[] capBytes = null;
+		byte[] objSizeBytes = null;
+		for(int i=0;i<20;i++){
+			try{
+				capBytes = zk.getData(diskPath +"/capacity", false, null);
+				objSizeBytes = zk.getData(diskPath+"/object_size", false, null); //the last node create by store
+				break;
+			} catch (KeeperException e ) {
+				Thread.sleep(100);
+				continue;
+
+			}
+		}
+		if(capBytes == null || objSizeBytes == null){
+			logger.error("Failed to get capacity or object_size for shared disk:{}", uuid);
+			return;
+		}
+		SharedDisk d = new SharedDisk();
+
+		d.raw_capacity = Long.parseLong(new String(capBytes));
+		d.object_size =  Long.parseLong(new String(objSizeBytes));
+
+
+		d.uuid=uuid;
+		d.status = Status.OK;
+
+		try {
+			List<String> storeIds = zk.getChildren(diskPath + "/stores", null);
+			d.coowner = StringUtils.join(storeIds.listIterator(), ',');
+			for(String id : storeIds){
+				String dev=new String(zk.getData(diskPath + "/stores/"+id+"/dev_name", false, null));
+				logger.debug("disk:{} device:{}", d.uuid, dev);
+				d.devName.put(id, dev);
+			}
+		} catch (KeeperException e) {
+			logger.error("Failed update sharedisk from ZK:", e);
+		}
+		S5Database.getInstance().upsert(d);
+		logger.info("Find shared disk:{}", d.uuid);
+		allSharedDisk.put(d.uuid, d);
+	}
+
+	public static String getDiskDeviceName(String diskUuid, String clientStoreId)
+	{
+		Tray tr = ClusterManager.allTray.get(diskUuid);
+		if(tr != null){
+			return tr.device;
+		} else {
+			SharedDisk sd = ClusterManager.allSharedDisk.get(diskUuid);
+			logger.debug("Get dev name for disk:{} clientId:{} rst:{}", diskUuid, clientStoreId, sd == null ? "NULL" : sd.devName.get(clientStoreId));
+			if(sd != null){
+				return sd.devName.get(clientStoreId);
+			}
+		}
 		return null;
 	}
 }

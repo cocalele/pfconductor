@@ -14,7 +14,11 @@ import net.sourceforge.argparse4j.inf.Subparsers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.UUID;
 
 public class CliMain
 {
@@ -161,6 +165,18 @@ public class CliMain
 			//sp.addArgument("-t").help("Tenant name of volume").required(true).metavar("tenant_name");
 			sp.setDefault("__func", (CmdRunner) CliMain::cmd_recovery_volume);
 
+			sp = sps.addParser("create_pfs2");
+			sp.description("Create PFS2 file");
+			sp.addArgument("-v").help("File name to create").required(true).metavar("volume_name");
+			sp.addArgument("-s").help("File size, unit like GB is accepted").required(true).metavar("size");
+			sp.addArgument("-d").help("Shared disk name to create file on").required(true).metavar("dev_name");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_create_pfs2(cmd, cfg);
+				}
+			});
+
 			Namespace cmd = cp.parseArgs(args);
 			String cfgPath = cmd.getString("c");
 			Config cfg = new Config(cfgPath);
@@ -202,6 +218,79 @@ public class CliMain
 				"size", size, "rep_cnt", rep_num);
 		if(r.retCode == RetCode.OK)
 			logger.info("Succeed create_volume:{}", volumeName);
+		else
+			throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
+		String [] header = { "Id", "Name", "Size", "RepCount", "Status"};
+
+		String[][] data = {
+				{ Long.toString(r.id), r.name, Long.toString(r.size), Integer.toString(r.rep_count), r.status },
+
+		};
+		ASCIITable.getInstance().printTable(header, data);
+	}
+
+	private static String readDiskUuid(String devName) throws IOException {
+		//the first bytes of a disk
+//		struct HeadPage {
+//		uint32_t magic;
+//		uint32_t version;
+//		unsigned char uuid[ 16];
+//		}
+//		head.magic = 0x3553424e; //magic number, NBS5
+//		head.version= S5_VERSION; //S5 version #define S5_VERSION 0x00030000
+
+		FileInputStream fi = new FileInputStream(devName);
+		byte[] buf = new byte[32];
+		int cnt = fi.read(buf);
+		if (!Arrays.equals(new byte[]{0x4e, 0x42, 0x53, 0x35}, 0, 4, buf, 0, 4)) {
+			throw new IOException("Magic number mismatch, not a valid pfbd disk");
+		}
+		if (!Arrays.equals(new byte[]{0x0, 0x0, 0x03, 0x0}, 0, 4, buf, 4, 8)) {
+			throw new IOException("Version number mismatch, not a valid pfbd disk");
+		}
+
+		String uuid = unpareUuid(buf, 8);
+		return uuid;
+	}
+
+	private static String unpareUuid(byte[] buf, int startIndex)
+	{
+		StringBuilder sb = new StringBuilder(32);
+		//b4a67579-2ee3-4317-8163-8fccf77d77fd
+		for(int i=0;i<4;i++){
+			sb.append(String.format("%02x", buf[startIndex++]));
+		}
+		sb.append("-");
+		for(int i=0;i<2;i++){
+			sb.append(String.format("%02x", buf[startIndex++]));
+		}
+		sb.append("-");
+		for(int i=0;i<2;i++){
+			sb.append(String.format("%02x", buf[startIndex++]));
+		}
+		sb.append("-");
+		for(int i=0;i<2;i++){
+			sb.append(String.format("%02x", buf[startIndex++]));
+		}
+		sb.append("-");
+		for(int i=0;i<6;i++){
+			sb.append(String.format("%02x", buf[startIndex++]));
+		}
+		return sb.toString();
+	}
+	private static void cmd_create_pfs2(Namespace cmd, Config cfg) throws Exception {
+		String volumeName = cmd.getString("v");
+		long size = parseNumber(cmd.getString("s"));
+		String diskName =cmd.getString("d");
+		String uuid = readDiskUuid(diskName);
+		logger.info("Create PFS2 file on disk:{} uuid:{}", diskName, uuid);
+
+		Config pfsCfg = new Config("/etc/pureflash/pfs.conf");
+		String storeId = pfsCfg.getString("afs", "id", null, true);
+		CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_pfs2", CreateVolumeReply.class, "volume_name", volumeName,
+				"size", size, "dev_uuid", uuid, "client_id", storeId);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed create PFS2 file:{}", volumeName);
 		else
 			throw new IOException(String.format("Failed to create_volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
 		String [] header = { "Id", "Name", "Size", "RepCount", "Status"};

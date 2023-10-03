@@ -125,6 +125,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.create_volume(request, response);
 			else if ("create_aof".equals(op))
 				reply = volumeHandler.create_volume(request, response);
+			else if("create_pfs2".equals(op))
+				reply = volumeHandler.create_pfs2(request, response);
 			else if ("update_volume".equals(op))
 				reply = volumeHandler.update_volume(request, response);
 			else if ("delete_volume".equals(op))

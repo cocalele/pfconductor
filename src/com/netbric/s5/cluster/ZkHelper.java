@@ -86,6 +86,7 @@ public class ZkHelper {
 				}
 			} catch (Exception e) {
 				logger.error("Exception in watching {}, {}", parentPath, e.toString());
+				e.printStackTrace();
 				System.exit(1);
 			}
 		}).start();

@@ -81,6 +81,9 @@ public class Main
 			ClusterManager.zkHelper.createZkNodeIfNotExist(ClusterManager.zkBaseDir + "/stores", null);
 			ClusterManager.watchStores();
 			ClusterManager.updateStoresFromZk();
+			ClusterManager.zkHelper.createZkNodeIfNotExist(ClusterManager.zkBaseDir + "/shared_disks", null);
+			ClusterManager.watchSharedDisks();
+			ClusterManager.updateSharedDisksFromZk();
 
 			// Start the server
 			httpServer = new Server(49180);

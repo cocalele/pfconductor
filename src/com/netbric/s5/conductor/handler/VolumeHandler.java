@@ -5,6 +5,7 @@ import com.dieselpoint.norm.Transaction;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.netbric.s5.cluster.ClusterManager;
 import com.netbric.s5.conductor.*;
 import com.netbric.s5.conductor.exception.InvalidParamException;
 import com.netbric.s5.conductor.exception.LoggedException;
@@ -13,7 +14,6 @@ import com.netbric.s5.conductor.exception.StateException;
 import com.netbric.s5.conductor.rpc.*;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.time.StopWatch;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,21 +22,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.Authenticator;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 public class VolumeHandler
 {
@@ -48,6 +39,7 @@ public class VolumeHandler
 		public String tray_uuid;
 		public String status;
 		public String rep_ports;
+		public String dev_name;
 		public ReplicaArg clone()
 		{
 			ReplicaArg r  = new ReplicaArg();
@@ -89,6 +81,9 @@ public class VolumeHandler
 		public String store_ips;
 		public String status;
 		public ShardInfoForClient(){}
+		public int is_shareddisk = 0;
+		public String dev_name;
+		public String disk_uuid;
 	};
 	public static class OpenVolumeReply extends RestfulReply
 	{
@@ -101,6 +96,7 @@ public class VolumeHandler
 		public int meta_ver;
 		public int snap_seq;
 		public ShardInfoForClient[] shards;
+		//public List<ShardArg> shards;
 		public int shard_lba_cnt_order;
 		public OpenVolumeReply(String op, int retCode, String reason) {
 			super(op, retCode, reason);
@@ -400,7 +396,7 @@ public class VolumeHandler
 			for (int i = 0; i < replica_count; i++)
 			{
 				StoreNode s = S5Database.getInstance().table("t_store")
-						.where("name=? AND status=?", store_names[i], StoreNode.STATUS_OK).transaction(trans).first(StoreNode.class);
+						.where("name=? AND status=?", store_names[i], Status.OK).transaction(trans).first(StoreNode.class);
 				store_ids[i] = s.id;
 			}
 
@@ -676,7 +672,7 @@ public class VolumeHandler
 
 	}
 
-	public static PrepareVolumeArg getPrepareArgs(String tenant_name, String volume_name) throws InvalidParamException, StateException
+	public static PrepareVolumeArg getPrepareArgs(String tenant_name, String volume_name, String clientId) throws InvalidParamException, StateException
 	{
 		Volume vol = S5Database.getInstance()
 				.sql("select t_volume.* from t_volume, t_tenant where t_tenant.name=? and t_volume.name=? and t_volume.tenant_id=t_tenant.id",
@@ -686,10 +682,10 @@ public class VolumeHandler
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " not exists");
 		if (vol.status.equals(Status.ERROR))
 			throw new InvalidParamException("Volume:" + tenant_name + ":" + volume_name + " in status (" + vol.status + ") can't be opened");
-		return getPrepareArgs(vol);
+		return getPrepareArgs(vol, clientId);
 	}
 
-	public static PrepareVolumeArg getPrepareArgs(Volume vol) throws  StateException
+	public static PrepareVolumeArg getPrepareArgs(Volume vol, String clientId) throws  StateException
 	{
 		List<Shard> shards = S5Database.getInstance().where("volume_id=?", vol.id).results(Shard.class);
 
@@ -719,6 +715,11 @@ public class VolumeHandler
 					.results(ReplicaArg.class);
 			if (shard.replicas.size() == 0)
 				throw new StateException("Volume:" + vol.tenant_id + ":" + vol.name + " no replicas available");
+			if(clientId != null) {
+				for (ReplicaArg rp : shard.replicas) {
+					rp.dev_name = ClusterManager.getDiskDeviceName(rp.tray_uuid, clientId);
+				}
+			}
 			arg.shards.add(shard);
 		}
 		return arg;
@@ -801,7 +802,7 @@ public class VolumeHandler
 		S5Database.getInstance().sql("update t_replica set status='ERROR' where volume_id=? and store_id=?", volumeId, storeId).execute();
 	}
 
-	private OpenVolumeReply getVolumeInfoForClient(long volumeId)
+	private OpenVolumeReply getVolumeInfoForClient(long volumeId, List<ShardArg> shardsDetail)
 	{
 		Volume v = S5Database.getInstance().where("id=?", volumeId).first(Volume.class);
 		List<Port> ports = S5Database.getInstance().sql("select t_port.* from t_port, t_store where t_port.purpose=? and t_port.store_id=t_store.id and (t_store.status=? or t_store.status=?)",
@@ -844,18 +845,34 @@ public class VolumeHandler
 		reply.snap_seq = v.snap_seq;
 		reply.shard_count = shards.size();
 		reply.shards = new ShardInfoForClient[shards.size()];
+		//reply.shards = shards;
 		reply.shard_lba_cnt_order = 36;
 		assert(v.shard_size == 1L<<reply.shard_lba_cnt_order);
 		shards.toArray(reply.shards);
+		logger.debug("shard count:{}", shardsDetail.size());
+		for(ShardArg shardDetail : shardsDetail){
+			ReplicaArg rep0 = shardDetail.replicas.get(0);
+			logger.debug("rep size:{} shareddisk count:{} rep0 uuid:{}", shardDetail.replicas.size(),
+					ClusterManager.allSharedDisk.size(),  rep0.tray_uuid);
+			if(shardDetail.replicas.size() == 1 && ClusterManager.allSharedDisk.containsKey(rep0.tray_uuid)){
+				//this is a shared disk
+				logger.debug("Found shared disk");
+				reply.shards[(int)shardDetail.index].is_shareddisk = 1;
+				reply.shards[(int)shardDetail.index].disk_uuid = rep0.tray_uuid;
+				reply.shards[(int)shardDetail.index].dev_name = rep0.dev_name;
+			}
+		}
 		return reply;
 	}
 
-	public static PrepareVolumeArg prepareVolume(String tenant_name, String volume_name, long feature) throws InvalidParamException, StateException, LoggedException {
+	public static PrepareVolumeArg prepareVolume(String tenant_name, String volume_name, long feature, String clientId) throws InvalidParamException, StateException, LoggedException {
 		boolean need_reprepare;
+		int succeed = 0;
 		PrepareVolumeArg arg = null;
 		do {
 			need_reprepare = false;
-			arg = getPrepareArgs(tenant_name, volume_name);
+			succeed = 0;
+			arg = getPrepareArgs(tenant_name, volume_name, clientId);
 			if (arg.status == Status.ERROR) {
 				logger.error(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
 				throw new StateException(String.format("Failed to open volume:%s for it's in ERROR state", volume_name));
@@ -878,6 +895,7 @@ public class VolumeHandler
 				RestfulReply rply = null;
 				try {
 					rply = prepareVolumeOnStore(s, arg);
+					succeed++;
 				} catch (Exception e) {
 					logger.error("Failed[2] to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
 					markReplicasOnStoreAsError(s.id, arg.volume_id);
@@ -889,7 +907,7 @@ public class VolumeHandler
 					throw new StateException(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
 				}
 			}
-		} while (need_reprepare);
+		} while (need_reprepare && succeed > 0);
 		return arg;
 	}
 
@@ -898,23 +916,26 @@ public class VolumeHandler
 		String volume_name;
 		String tenant_name;
 		String snapshot_name;
+		String clientId = null;
+		PrepareVolumeArg prepareArg;
 		Snapshot snapshot;
 		long volumeId;
 		try {
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snapshot_name = Utils.getParamAsString(request, "snapshot_name", null);
+			clientId = Utils.getParamAsString(request, "client_id", null);
 			long feature_request = 0;
 			if(op.equals("open_aof")) {
 				feature_request = Volume.FEATURE_AOF;
 			}
-			PrepareVolumeArg arg = prepareVolume(tenant_name, volume_name, feature_request);
-			volumeId = arg.volume_id;
+			prepareArg = prepareVolume(tenant_name, volume_name, feature_request, clientId);
+			volumeId = prepareArg.volume_id;
 		} catch (InvalidParamException | StateException  e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 		}
 
-		OpenVolumeReply r = getVolumeInfoForClient(volumeId);
+		OpenVolumeReply r = getVolumeInfoForClient(volumeId, prepareArg.shards);
 		if(snapshot_name!=null) {
 			snapshot = S5Database.getInstance().where("volume_id=? and name=?", volumeId, snapshot_name).first(Snapshot.class);
 			r.snap_seq = (int)snapshot.snap_seq;
@@ -1034,7 +1055,7 @@ public class VolumeHandler
 					BackgroundTaskManager.TaskType.RECOVERY, "recovery volume:" + volume_name,
 					new BackgroundTaskManager.TaskExecutor() {
 						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
-							prepareVolume(tenant_name, volume_name, v.features);
+							prepareVolume(tenant_name, volume_name, v.features, null);
 							RecoveryManager.getInstance().recoveryVolume(t);
 						}
 					}, v);
@@ -1066,7 +1087,7 @@ public class VolumeHandler
 			t = BackgroundTaskManager.getInstance().initiateTask(
 					BackgroundTaskManager.TaskType.RECOVERY, "move volume:" + volume_name,
 					t1 -> {
-						prepareVolume(tenant_name, volume_name, v.features);
+						prepareVolume(tenant_name, volume_name, v.features,null);
 						RebalanceManager.getInstance().moveVolume(t1, fromStoreId, fromSsdUuid, targetStoreId, targetSsdUuid);
 					}, v);
 			return new BackgroundTaskReply(op+"_reply", t);
@@ -1234,6 +1255,113 @@ public class VolumeHandler
 				return new RestfulReply(op, RetCode.VOLUME_NOT_EXISTS, "Volume not exists:" + volume_name);
 		} catch (InvalidParamException | SQLException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+		}
+	}
+
+	public RestfulReply create_pfs2(HttpServletRequest request, HttpServletResponse response)
+	{
+
+
+		String op = request.getParameter("op");
+		long volume_size = 0;
+
+		Transaction trans = null;
+		try
+		{
+			String tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+			String volume_name = Utils.getParamAsString(request, "volume_name");
+			volume_size = Utils.getParamAsLong(request, "size", 4L << 30) ;
+			String clientStoreId = Utils.getParamAsString(request, "client_id");
+			String diskUuid = Utils.getParamAsString(request, "dev_uuid");
+
+
+			RestfulReply r;
+			if(op.equals("create_pfs2"))
+				r = do_create_pfs2(volume_size, tenant_name, volume_name, diskUuid, clientStoreId);
+			else
+				return new RestfulReply(op, RetCode.INVALID_ARG, String.format("Invalid OP:%s", op));
+			r.op = op + "_reply";
+			return r;
+		}
+		catch (InvalidParamException e)
+		{
+			return new RestfulReply(op, RetCode.INVALID_ARG, e.getMessage());
+		}
+
+	}
+	private RestfulReply do_create_pfs2(long volume_size, String tenant_name, String volume_name, String diskUuid, String clientStoreId)
+	{
+		long usable_size = 0;
+		Transaction trans = null;
+		try {
+			trans = S5Database.getInstance().startTransaction();
+			long used_size;
+			Volume v = new Volume();
+
+			Tenant t = S5Database.getInstance().table("t_tenant").where("name=?", tenant_name).transaction(trans).first(Tenant.class);
+			if (t == null) {
+				return new RestfulReply(null, RetCode.INVALID_ARG, "tenant not exists: " + tenant_name);
+			}
+
+			SharedDisk sd = S5Database.getInstance().table("t_shared_disk").where("uuid=?", diskUuid).first(SharedDisk.class);
+			if(sd == null){
+				return new RestfulReply(null, RetCode.INVALID_ARG, "No such disk:" + diskUuid);
+			}
+			Volume volume = S5Database.getInstance().table("t_volume")
+					.where("name=? AND tenant_id=?", volume_name, t.id).transaction(trans).first(Volume.class);
+			if (volume != null) {
+				return new RestfulReply(null, RetCode.INVALID_ARG, "volume already exists: " + volume_name);
+			}
+
+
+			//tenant is considered as directory, don't check quota
+
+			v.id = S5Database.getInstance().queryLongValue("select NEXTVAL(seq_gen)  as val") << 24;
+			v.rep_count = 1;
+			v.name = volume_name;
+			v.size = volume_size;
+			v.shard_size = Config.DEFAULT_SHARD_SIZE;
+			v.iops = 100<<10;
+			v.bw = 512<<20;
+			v.cbs = t.iops * 2;
+			v.tenant_id = (int) t.id;
+			v.status = Status.OK;
+			v.snap_seq = 1;
+			v.features = 0;
+
+			S5Database.getInstance().transaction(trans).insert(v);
+			long shardCount = (v.size + v.shard_size - 1) / v.shard_size;
+			for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
+				Shard shard = new Shard();
+				shard.id = v.id | (shardIndex << 4);
+				shard.shard_index = shardIndex;
+				shard.primary_rep_index = 0;
+				shard.volume_id = v.id;
+				shard.status = Status.OK;
+				shard.status_time = Timestamp.valueOf(LocalDateTime.now());
+				S5Database.getInstance().insert(shard);
+
+
+				for (int i = 0; i < v.rep_count; i++) {
+					Replica r = new Replica();
+					r.id = shard.id | i;
+					r.shard_id = shard.id;
+					r.volume_id = v.id;
+					r.store_id = Integer.parseInt(clientStoreId);
+					r.tray_uuid = diskUuid;
+					r.status = Status.OK;
+					r.replica_index = i;
+					r.status_time = Timestamp.valueOf(LocalDateTime.now());
+					S5Database.getInstance().transaction(trans).insert(r);
+				}
+			}
+			trans.commit();
+			return new CreateVolumeReply(null, v);
+		}
+		catch (SQLException e)
+		{
+			trans.rollback();;
+			return new RestfulReply(null, RetCode.INVALID_ARG, e.getMessage());
 		}
 	}
 }

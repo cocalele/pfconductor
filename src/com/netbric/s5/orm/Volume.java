@@ -37,6 +37,7 @@ public class Volume
 	public int snap_seq;
 	public long features;
 	public static final long FEATURE_AOF = 1; //this volume can only be used as AOF
+	public static final long FEATURE_PFS2 = 2;
 
 	public Volume()
 	{

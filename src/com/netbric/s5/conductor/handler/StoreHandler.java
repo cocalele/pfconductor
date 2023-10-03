@@ -55,7 +55,7 @@ public class StoreHandler
 
 			n.model = " ";
 			n.sn = n.name + "-0000AB00";
-			n.status = StoreNode.STATUS_OK;
+			n.status = Status.OK;
 
 		}
 		catch (InvalidParamException e)

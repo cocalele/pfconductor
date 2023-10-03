@@ -18,10 +18,6 @@ public class StoreNode
 	@Column(name = "mngt_ip")
 	public String mngtIp;
 
-	// following values are copied from C definition to s5c_store_status
-	public static final String STATUS_OK = "OK";
-	public static final String STATUS_OFFLINE = "OFFLINE";
-	public static final String STATUS_ERROR = "ERROR";
 
 	/**
 	 * return hostname as String representation.
