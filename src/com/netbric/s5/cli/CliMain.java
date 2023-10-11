@@ -139,6 +139,11 @@ public class CliMain
 			sp.addArgument("-n").help("Name of snapshot").required(true).metavar("snap_name");
 			sp.setDefault("__func", (CmdRunner) CliMain::cmd_create_snapshot);
 
+			sp=sps.addParser("delete_snapshot");
+			sp.addArgument("-v").help("Volume name to delete snapshot").required(true).metavar("volume_name");
+			sp.addArgument("-n").help("Name of snapshot").required(true).metavar("snap_name");
+			sp.setDefault("__func", (CmdRunner) CliMain::cmd_delete_snapshot);
+
 			sp=sps.addParser("get_pfc");
 			sp.setDefault("__func", new CmdRunner() {
 				@Override
@@ -358,6 +363,17 @@ public class CliMain
 		String snapName = cmd.getString("n");
 
 		RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "create_snapshot",  RestfulReply.class,
+				"volume_name", volName, "snapshot_name", snapName);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed create_snapshot");
+		else
+			throw new IOException(String.format("Failed to create_snapshot , code:%d, reason:%s", r.retCode, r.reason));
+	}
+	static void cmd_delete_snapshot(Namespace cmd, Config cfg) throws Exception {
+		String volName = cmd.getString("v");
+		String snapName = cmd.getString("n");
+
+		RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_snapshot",  RestfulReply.class,
 				"volume_name", volName, "snapshot_name", snapName);
 		if(r.retCode == RetCode.OK)
 			logger.info("Succeed create_snapshot");

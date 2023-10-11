@@ -950,62 +950,36 @@ public class VolumeHandler
 		String volume_name;
 		String tenant_name;
 		String snap_name;
-		long volumeId;
-		Transaction t = null;
-		Volume v = null;
-		Snapshot snap = null;
+
 		try {
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 			snap_name = Utils.getParamAsString(request, "snapshot_name");
-			v = Volume.fromName(tenant_name, volume_name);
-			if(v == null)
-				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
-			snap = Snapshot.fromName(tenant_name, volume_name, snap_name);
-			if(snap != null)
-				throw new InvalidParamException(String.format("Snapshot %s already exists", snap_name));
-
-			t = S5Database.getInstance().startTransaction();
-			v = S5Database.getInstance().sql("select * from t_volume where id=? for update", v.id).transaction(t).first(Volume.class);//lock db
-			snap = new Snapshot();
-			snap.name = snap_name;
-			snap.size = v.size;
-			snap.volume_id = v.id;
-			snap.snap_seq = v.snap_seq;
-			S5Database.getInstance().transaction(t).insert(snap);
-			S5Database.getInstance().transaction(t).sql("update t_volume set snap_seq=snap_seq+1 where id=?", v.id)
-				.execute();
-			t.commit(); //commit change to snap_seq, even later push snap_seq tot store node failed, we waste a snap_seq number only,
-			            //this snap_seq number will never be reused.
+			int rc = SnapshotManager.createSnapshot(tenant_name, volume_name, snap_name);
+			return new RestfulReply(op, rc, "");
 		} catch (InvalidParamException e1) {
-			if(t != null)
-				t.rollback();;
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
 
 		}
-		Volume v2 = Volume.fromId(v.id);//now get new meta_ver after snapshot
-		boolean updateFailed = false;
-		List<StoreNode> nodes = S5Database.getInstance()
-				.sql("select * from t_store where id in (select distinct store_id from t_replica where volume_id=? and status=?)",
-						v.id, Status.OK)
-				.results(StoreNode.class);
-		for(StoreNode n : nodes) {
-			try {
-				SimpleHttpRpc.invokeStore(n.mngtIp, "set_snap_seq", RestfulReply.class, "volume_id", v2.id, "snap_seq", v2.snap_seq);
-			}
-			catch(Exception e){
-				updateFailed = true;
-				updateReplicaStatusToError(n.id, v2.id, String.format("push snap_seq to store:%d fail", n.id));
-				logger.error("Failed update snap_seq on store:{}({}), ", n.id, n.mngtIp);
-			}
-		}
-		if(updateFailed) {
-			incrVolumeMetaver(v2, true, "create snapshot failed");
-		}
-		return new RestfulReply(op);
 	}
+	public RestfulReply deleteSnapshot(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+		String snap_name;
 
-	static void updateReplicaStatusToError(int storeId, long volumeId, String reason)
+		try {
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+			snap_name = Utils.getParamAsString(request, "snapshot_name");
+			int rc = SnapshotManager.deleteSnapshot(tenant_name, volume_name, snap_name);
+			return new RestfulReply(op, rc, "");
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
+		}
+	}
+	public static void updateReplicaStatusToError(int storeId, long volumeId, String reason)
 	{
 		logger.error("Update replicas to ERROR on store:{} of volume:{}, for:{}", storeId, volumeId, reason);
 		S5Database.getInstance().sql("update t_replica set status=? where volume_id=? and store_id=?",

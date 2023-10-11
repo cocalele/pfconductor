@@ -140,6 +140,8 @@ public class S5RestfulHandler extends AbstractHandler
 
 			else if("create_snapshot".equals(op))
 				reply = volumeHandler.createSnapshot(request, response);
+			else if("delete_snapshot".equals(op))
+				reply = volumeHandler.deleteSnapshot(request, response);
 			else if("recovery_volume".equals(op))
 				reply = volumeHandler.recoveryVolume(request, response);
 			else if("query_task".equals(op))
