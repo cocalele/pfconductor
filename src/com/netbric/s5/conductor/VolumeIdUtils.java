@@ -7,6 +7,15 @@ package com.netbric.s5.conductor;
  * while the volume id is: <volume_index> << 24
  */
 public class VolumeIdUtils {
+	static final long SHARD_LBA_CNT = ((long)16 << 20); //a LBA is 4K, 1<<SHARD_LBA_CNT_ORDER
+	static final long SHARD_LBA_CNT_ORDER = 24;
+	static final long SHARD_SIZE_ORDER = 36; //64G, = 1<<36
+	static final long SHARD_SIZE = ((long)1<<SHARD_SIZE_ORDER); //i.e. 64GB
+	static final long LBA_LENGTH = 4096;	///< LBA's length.
+	static final long LBA_LENGTH_ORDER = 12;
+	static final long SECTOR_SIZE = 512; //this is linux standarded
+
+
 	static public long replicaToVolumeId(long repId) {
 		return repId & 0xffffffffff000000L;
 	}

@@ -1110,18 +1110,22 @@ public class VolumeHandler
 	}
 
 
-	public static final class RepExtTemp{
-		public RepExtTemp(){}
-		public long replica_index;
-		public long replica_id;
-		public String tray_uuid;
-		public String mngt_ip;
-		public String  md5;
-	};
-	public static final class CalcMd5Reply  extends RestfulReply{
-		public String md5;
-		public CalcMd5Reply(String op) {
-			super(op);
+	public RestfulReply deepScrubVolume(HttpServletRequest request, HttpServletResponse response) {
+		String op = request.getParameter("op");
+		String volume_name;
+		String tenant_name;
+
+		Volume v = null;
+
+		try {
+			volume_name = Utils.getParamAsString(request, "volume_name");
+			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
+
+			BackgroundTaskManager.BackgroundTask t = Scrubber.deepScrubVolume(tenant_name, volume_name);
+			return new BackgroundTaskReply(op+"_reply", t);
+		} catch (InvalidParamException e1) {
+			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());
+
 		}
 	}
 	public RestfulReply scrubVolume(HttpServletRequest request, HttpServletResponse response) {
@@ -1135,77 +1139,7 @@ public class VolumeHandler
 			volume_name = Utils.getParamAsString(request, "volume_name");
 			tenant_name = Utils.getParamAsString(request, "tenant_name", "tenant_default");
 
-			v = Volume.fromName(tenant_name, volume_name);
-			if(v == null)
-				throw new InvalidParamException(String.format("Volume %s/%s not found", tenant_name, volume_name));
-			Volume finalV = v;
-			BackgroundTaskManager.BackgroundTask t=null;
-
-			t = BackgroundTaskManager.getInstance().initiateTask(
-					BackgroundTaskManager.TaskType.RECOVERY, "scrub volume:" + volume_name,
-					new BackgroundTaskManager.TaskExecutor() {
-						public void run(BackgroundTaskManager.BackgroundTask t) throws Exception {
-							List<Shard> shards = S5Database.getInstance().where("volume_id=?", finalV.id).results(Shard.class);
-							int progress = 1;
-							int inconsist_cnt = 0;
-							for(Shard s : shards) {
-								List<RepExtTemp> reps = S5Database.getInstance().
-										sql("select r.id replica_id, r.tray_uuid, replica_index, mngt_ip from t_replica r, t_store s " +
-												" where r.store_id=s.id and r.shard_id=? and r.status=?", s.id, Status.OK).results(RepExtTemp.class);
-								RepExtTemp primary = null;
-								for(RepExtTemp r : reps) {
-									CalcMd5Reply reply = SimpleHttpRpc.invokeStore(r.mngt_ip, "calculate_replica_md5", CalcMd5Reply.class,
-											"replica_id", r.replica_id,
-											"ssd_uuid", r.tray_uuid);
-									if(reply.retCode != 0) {
-										logger.error("Failed to get replica md5 from store:{} for: {}", r.mngt_ip, reply.reason);
-									} else {
-										logger.info("Get replica:0x{} md5:{}", Long.toHexString(r.replica_id), reply.md5);
-									}
-									if(r.replica_index == s.primary_rep_index)
-										primary =r;
-									r.md5 = reply.md5;
-
-								}
-								if(primary == null || primary.md5 == null ){
-									logger.error("Primary replica not available for shard:0x{}", Long.toHexString(s.id));
-									continue;
-								}
-								for(RepExtTemp r : reps) {
-									if(!primary.md5.equals(r.md5)) {
-										inconsist_cnt++;
-										logger.error("Replica 0x:{} md5:{} diff to primary:{}", Long.toHexString(r.replica_id), r.md5, primary.md5);
-										logger.error("SET_REPLICA_STATUS_ERROR_ Set replica:0x{} to ERROR status, for scrub", Long.toHexString(r.replica_id));
-										Transaction trans = S5Database.getInstance().startTransaction();
-										try {
-											S5Database.getInstance().transaction(trans)
-													.sql("update t_replica set status='ERROR' where id=?", r.replica_id).execute();
-											S5Database.getInstance().transaction(trans).sql("update t_shard set status=? where id=?", Status.DEGRADED, s.id).execute();
-											int changed = S5Database.getInstance().transaction(trans).sql(
-													"update t_volume set status=? where id=?", Status.DEGRADED, finalV.id)
-													.execute().getRowsAffected();
-											if(changed > 0) {
-												logger.warn("Volume:{} status changed due to scrub", finalV.id);
-											}
-											trans.commit();;
-										}catch(DbException  e) {
-											trans.rollback();
-											logger.error("Failed uddate DB and will suicide ... \n, {}", e);
-											Main.suicide();
-										}
-										pushMetaverToStore(finalV);
-									}
-
-								}
-
-								t.progress = progress*100/shards.size();
-								progress++;
-							}
-							logger.info("scrub volume:{}, id:0x{} complete, {} replicas are inconsistency", finalV.name,
-									Long.toHexString(finalV.id), inconsist_cnt);
-							t.status = (inconsist_cnt == 0 ? BackgroundTaskManager.TaskStatus.SUCCEEDED : BackgroundTaskManager.TaskStatus.FAILED);
-						}
-					}, v);
+			BackgroundTaskManager.BackgroundTask t = Scrubber.scrubVolume(tenant_name, volume_name);
 			return new BackgroundTaskReply(op+"_reply", t);
 		} catch (InvalidParamException e1) {
 			return new RestfulReply(op, RetCode.INVALID_ARG, e1.getMessage());

@@ -49,7 +49,7 @@ public class BackgroundTaskManager {
     }
 
 
-    static public enum TaskType {RECOVERY, SCRUB, GC}
+    static public enum TaskType {RECOVERY, SCRUB, DEEP_SCRUB, GC}
     static public enum TaskStatus{WAITING, RUNNING, SUCCEEDED, FAILED }
     static public interface TaskExecutor {
         void run(BackgroundTask arg) throws Exception;

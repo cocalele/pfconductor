@@ -7,7 +7,6 @@ import com.netbric.s5.conductor.rpc.RestfulReply;
 import com.netbric.s5.conductor.rpc.RetCode;
 import com.netbric.s5.conductor.rpc.SimpleHttpRpc;
 import com.netbric.s5.orm.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +15,7 @@ import java.util.List;
 import java.util.ListIterator;
 
 public class SnapshotManager {
-	static final Logger logger = LoggerFactory.getLogger(VolumeHandler.class);
+	static final Logger logger = LoggerFactory.getLogger(SnapshotManager.class);
 	static Hashtable<Long, Volume> ongoingVolumes = new Hashtable<>();
 	public static int createSnapshot(String tenant_name, String volume_name, String snap_name) throws InvalidParamException
 	{

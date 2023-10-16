@@ -150,6 +150,8 @@ public class S5RestfulHandler extends AbstractHandler
 				reply = volumeHandler.moveVolume(request, response);
 			else if("scrub_volume".equals(op))
 				reply = volumeHandler.scrubVolume(request, response);
+			else if("deep_scrub_volume".equals(op))
+				reply = volumeHandler.deepScrubVolume(request, response);
 			else if("check_volume_exists".equals(op))
 				reply = volumeHandler.check_volume_exists(request, response);
 			else if("ls_children".equals(op))
