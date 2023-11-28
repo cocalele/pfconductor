@@ -32,6 +32,7 @@ drop view  if exists v_primary_count;
 drop view  if exists v_primary_s5store_id;
 drop view  if exists v_replica_ext;
 drop table  if exists t_volume;
+drop table  if exists t_port;
 drop table  if exists t_replica;
 drop table  if exists t_quotaset;
 drop table  if exists t_tenant;

@@ -226,6 +226,7 @@ public class VolumeHandler
 			int  rep_count = Utils.getParamAsInt(request, "rep_cnt", 1);
 			int iops = Utils.getParamAsInt(request, "iops", 8 << 10);
 			long bw = Utils.getParamAsInt(request, "bw", 160 << 20);
+			int hostId = Utils.getParamAsInt(request, "host_id", -1);
 
 			if(rep_count < 1 || rep_count >3)
 			{
@@ -235,9 +236,9 @@ public class VolumeHandler
 
 			RestfulReply r;
 			if(op.equals("create_volume"))
-				r = do_create_volume(volume_size, tenant_name, volume_name, rep_count, iops, bw, 0);
+				r = do_create_volume(volume_size, tenant_name, volume_name, rep_count, iops, bw, hostId,0);
 			else if(op.equals("create_aof"))
-				r = do_create_volume(volume_size, tenant_name, volume_name, rep_count, iops, bw, Volume.FEATURE_AOF);
+				r = do_create_volume(volume_size, tenant_name, volume_name, rep_count, iops, bw, hostId, Volume.FEATURE_AOF);
 			else
 				return new RestfulReply(op, RetCode.INVALID_ARG, String.format("Invalid OP:%s", op));
 			r.op = op + "_reply";
@@ -250,7 +251,7 @@ public class VolumeHandler
 
 	}
 
-	private RestfulReply do_create_volume(long volume_size, String tenant_name, String volume_name, int rep_count, int iops, long bw, long feature)
+	private RestfulReply do_create_volume(long volume_size, String tenant_name, String volume_name, int rep_count, int iops, long bw, int hostId, long feature)
 	{
 		long usable_size = 0;
 		Transaction trans = null;
@@ -313,7 +314,7 @@ public class VolumeHandler
 				Shard shard = new Shard();
 				shard.id = v.id | (shardIndex << 4);
 				shard.shard_index = shardIndex;
-				shard.primary_rep_index = 0;
+				shard.primary_rep_index = (hostId == -1 ? shardIndex%v.rep_count : 0);
 				shard.volume_id = v.id;
 				shard.status = Status.OK;
 				shard.status_time = Timestamp.valueOf(LocalDateTime.now());
@@ -321,7 +322,7 @@ public class VolumeHandler
 				String[] store_name = new String[3];
 				int[] store_idx = new int[3];
 				String[] tray_ids = new String[3];
-				select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx);
+				select_store(trans, v.rep_count, volume_size, store_name, tray_ids, store_idx, hostId);
 				for (int i = 0; i < v.rep_count; i++) {
 					Replica r = new Replica();
 					r.id = shard.id | i;
@@ -346,7 +347,7 @@ public class VolumeHandler
 	}
 
 	private void select_store(Transaction trans, int replica_count, long volume_size, String[] store_names,
-			String[] tray_ids, int[] store_ids) throws InvalidParamException {
+			String[] tray_ids, int[] store_ids, int hostId) throws InvalidParamException {
 		if (replica_count < 1 && replica_count > 3)
 		{
 			throw new InvalidParamException(String.format("invalid replica count:%d", replica_count));
@@ -414,12 +415,12 @@ public class VolumeHandler
 			}
 		}
 
-		select_suitable_store_tray(trans, replica_count, volume_size, store_names, store_ids, tray_ids);
+		select_suitable_store_tray(trans, replica_count, volume_size, store_names, store_ids, tray_ids, hostId);
 		return;
 	}
 
 	private void select_suitable_store_tray(Transaction trans, int replica_count, long volume_size,
-			String[] store_names, int[] store_ids, String[] tray_ids) throws InvalidParamException {
+			String[] store_names, int[] store_ids, String[] tray_ids, int hostId) throws InvalidParamException {
 		if (store_ids[0] == -1)
 		{
 			// the following SQL:
@@ -435,11 +436,33 @@ public class VolumeHandler
 //							+ "group by t.store_id order by max_tray desc limit 3 ").transaction(trans)
 //					.results(HashMap.class);
 
-			List<HashMap> list = S5Database.getInstance()
-					.sql("select * from v_store_free_size as s "
-							+ "where s.status='OK' "
-							+ " order by free_size desc limit ? ", replica_count).transaction(trans)
-					.results(HashMap.class);
+			List<HashMap> list = new LinkedList<>();
+
+			if(hostId == -1){
+				list = S5Database.getInstance()
+						.sql("select * from v_store_free_size as s "
+								+ "where s.status='OK' "
+								+ " order by free_size desc limit ? ", replica_count ).transaction(trans)
+						.results(HashMap.class);
+
+			} else {
+				if (replica_count > 1 ) {
+					list = S5Database.getInstance()
+							.sql("select * from v_store_free_size as s "
+									+ "where s.status='OK' "
+									+ " order by free_size desc limit ? ", replica_count - 1).transaction(trans)
+							.results(HashMap.class);
+				}
+				List<HashMap> list2 = S5Database.getInstance()
+						.sql("select * from v_store_free_size as s "
+								+ "where s.status='OK' "
+								+ " and store_id=? ", hostId ).transaction(trans)
+						.results(HashMap.class);
+				if(list2 == null || list2.size() == 0){
+					throw new InvalidParamException("Can't find specified store ID: " + hostId);
+				}
+				list.add(0, list2.get(0));
+			}
 
 			if (list.size() < replica_count)
 				throw new InvalidParamException("only " + list.size()

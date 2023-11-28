@@ -90,6 +90,7 @@ public class CliMain
 			sp.addArgument("-v").help("Volume name to create").required(true).metavar("volume_name");
 			sp.addArgument("-s").help("Volume size, unit like GB is accepted").required(true).metavar("size");
 			sp.addArgument("-r", "--rep_num").help("Replica number").type(Integer.class).setDefault(1).metavar("rep_num");
+			sp.addArgument("--host_id").help("Host ID to affinity primary").type(Integer.class).setDefault(-1).metavar("host_id");
 			sp.setDefault("__func", new CmdRunner() {
 				@Override
 				public void run(Namespace cmd, Config cfg) throws Exception {
@@ -218,9 +219,9 @@ public class CliMain
 		String volumeName = cmd.getString("v");
 		long size = parseNumber(cmd.getString("s"));
 		long rep_num =cmd.getInt("rep_num");
-
+		long hostId = cmd.getInt("host_id");
 		CreateVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "create_volume", CreateVolumeReply.class, "volume_name", volumeName,
-				"size", size, "rep_cnt", rep_num);
+				"size", size, "rep_cnt", rep_num, "host_id", hostId);
 		if(r.retCode == RetCode.OK)
 			logger.info("Succeed create_volume:{}", volumeName);
 		else
