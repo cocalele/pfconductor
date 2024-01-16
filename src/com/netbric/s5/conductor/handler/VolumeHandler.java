@@ -337,12 +337,24 @@ public class VolumeHandler
 				}
 			}
 			trans.commit();
+			trans=null;
 			return new CreateVolumeReply(null, v);
 		}
 		catch (InvalidParamException | SQLException e)
 		{
-			trans.rollback();;
+			trans.rollback();
+			trans=null;
 			return new RestfulReply(null, RetCode.INVALID_ARG, e.getMessage());
+		}
+		finally{
+			if(trans != null){
+				try {
+					trans.close();
+				} catch (IOException e) {
+					logger.error("Failed close transaction", e);
+				}
+			}
+
 		}
 	}
 
@@ -449,8 +461,8 @@ public class VolumeHandler
 				if (replica_count > 1 ) {
 					list = S5Database.getInstance()
 							.sql("select * from v_store_free_size as s "
-									+ "where s.status='OK' "
-									+ " order by free_size desc limit ? ", replica_count - 1).transaction(trans)
+									+ "where s.status='OK' and store_id!=?"
+									+ " order by free_size desc limit ? ", hostId, replica_count - 1).transaction(trans)
 							.results(HashMap.class);
 				}
 				List<HashMap> list2 = S5Database.getInstance()
@@ -1287,12 +1299,24 @@ public class VolumeHandler
 				}
 			}
 			trans.commit();
+			trans=null;
 			return new CreateVolumeReply(null, v);
 		}
 		catch (SQLException e)
 		{
-			trans.rollback();;
+			trans.rollback();
+			trans=null;
 			return new RestfulReply(null, RetCode.INVALID_ARG, e.getMessage());
+		}
+		finally{
+			if(trans != null){
+				try {
+					trans.close();
+				} catch (IOException e) {
+					logger.error("Failed close transaction", e);
+				}
+			}
+
 		}
 	}
 }

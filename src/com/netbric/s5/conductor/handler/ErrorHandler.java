@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.sql.SQLException;
 
 public class ErrorHandler {
@@ -62,6 +63,16 @@ public class ErrorHandler {
 			trans.rollback();
 			logger.error("Failed uddate DB in handle error and will suicide ... \n, {}", e);
 			Main.suicide();
+		}
+		finally{
+			if(trans != null){
+				try {
+					trans.close();
+				} catch (IOException e) {
+					logger.error("Failed close transaction", e);
+				}
+			}
+
 		}
 		return new RestfulReply("handle_error_reply", -1, "Unexpected code branch");
 	}

@@ -11,6 +11,7 @@ import com.netbric.s5.orm.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 
 public class RebalanceManager {
@@ -166,6 +167,19 @@ public class RebalanceManager {
 				tx.rollback();
 				logger.error("Failed  move replica: {} from store:{} to store:{} ssd:{}. reason:{}", String.format("0x%x", r.id),
 						r.store_id, targetStore.id, targetSsdUuid, e);
+			}
+			finally{
+
+				if(tx != null){
+					try {
+						tx.close();
+					} catch (IOException e) {
+						logger.error("Failed close transaction", e);
+					}
+				}
+
+
+
 			}
 		}
 	}

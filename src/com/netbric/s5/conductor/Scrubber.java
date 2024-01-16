@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.persistence.Transient;
+import java.io.IOException;
 import java.util.List;
 import java.util.Vector;
 
@@ -138,6 +139,16 @@ public class Scrubber {
 										logger.error("Failed to update DB and will suicide ... \n", e);
 										Main.suicide();
 									}
+									finally{
+										if(trans != null){
+											try {
+												trans.close();
+											} catch (IOException e) {
+												logger.error("Failed close transaction", e);
+											}
+										}
+
+									}
 									VolumeHandler.pushMetaverToStore(v);
 								}
 
@@ -222,6 +233,16 @@ public class Scrubber {
 											e.printStackTrace();
 											logger.error("Failed to update DB and will suicide ... \n", e);
 											Main.suicide();
+										}
+										finally{
+											if(trans != null){
+												try {
+													trans.close();
+												} catch (IOException e) {
+													logger.error("Failed close transaction", e);
+												}
+											}
+
 										}
 										VolumeHandler.pushMetaverToStore(v);
 									}
