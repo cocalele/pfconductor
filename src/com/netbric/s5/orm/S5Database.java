@@ -53,6 +53,7 @@ public class S5Database extends Database
 	private String dbUser;
 	private String dbPass;
 	private String dbName;
+	private String dbPort;
 
 	public void init(com.netbric.s5.conductor.Config cfg) throws ConfigException
 	{
@@ -60,7 +61,7 @@ public class S5Database extends Database
 		dbUser = cfg.getString("db", "user", null, true);
 		dbPass = cfg.getString("db", "pass", null, true);
 		dbName = cfg.getString("db", "db_name", null, true);
-
+		dbPort = cfg.getString("db", "db_port", "3306", false);
 	}
 
 	public static S5Database getInstance()
@@ -78,10 +79,12 @@ public class S5Database extends Database
 			HikariConfig config = new HikariConfig();
 			config.setMaximumPoolSize(100);
 //			config.setDataSourceClassName("com.mysql.jdbc.jdbc2.optional.MysqlDataSource");
-			config.setJdbcUrl(String.format("jdbc:mysql://%s:3306/%s?useSSL=false&serverTimezone=UTC", dbIp, dbName));
+			String url = String.format("jdbc:mysql://%s:%s/%s?useSSL=false&serverTimezone=UTC", dbIp, dbPort, dbName);
+			logger.info("meta db:{}", url);
+			config.setJdbcUrl(url);
 			config.setUsername(dbUser);
 			config.setPassword(dbPass);
-			config.setMaximumPoolSize(5);
+			config.setMaximumPoolSize(50);
 			return new HikariDataSource(config);
 
 		}
