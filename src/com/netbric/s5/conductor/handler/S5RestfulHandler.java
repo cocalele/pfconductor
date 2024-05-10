@@ -19,7 +19,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 
-public class S5RestfulHandler extends AbstractHandler
+public class S5RestfulHandler extends com.sun.net.httpserver.HttpHandler
 {
 	static final Logger logger = LoggerFactory.getLogger(S5RestfulHandler.class);
 	VolumeHandler volumeHandler = new VolumeHandler();

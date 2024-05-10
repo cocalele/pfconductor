@@ -1,8 +1,8 @@
 package com.netbric.s5.conductor;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.concurrent.TimeUnit;
 
 import com.netbric.s5.conductor.handler.DebugHandler;
 import com.netbric.s5.conductor.handler.S5RestfulHandler;
@@ -11,12 +11,10 @@ import com.netbric.s5.orm.S5Database;
 import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.eclipse.jetty.server.Connector;
-import org.eclipse.jetty.server.Server;
-import org.eclipse.jetty.server.ServerConnector;
-import org.eclipse.jetty.server.handler.ContextHandler;
-import org.eclipse.jetty.server.handler.ContextHandlerCollection;
-import org.eclipse.jetty.util.thread.ExecutorThreadPool;
+
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpContext;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +28,7 @@ public class Main
 
 	}
 	static final Logger logger = LoggerFactory.getLogger(Main.class);
-	private static Server httpServer;
+	private static HttpServer httpServer;
 
 	public static void main(String[] args)
 	{
@@ -86,7 +84,8 @@ public class Main
 			ClusterManager.updateSharedDisksFromZk();
 
 			// Start the server
-			httpServer = new Server(49180);
+			httpServer = HttpServer.create(new InetSocketAddress(49180), 32);
+
 			// Add a single handler on context "/hello"
 
 			//not works
@@ -96,7 +95,7 @@ public class Main
 //			connector.setPort(49180);
 //			httpServer.setConnectors(new Connector[]{connector});
 
-
+			HttpContext context = httpServer.createContext("/s5c");
 
 			ContextHandler context = new ContextHandler();
 			context.setContextPath("/s5c");
