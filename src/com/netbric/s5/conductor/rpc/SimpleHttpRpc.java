@@ -6,45 +6,60 @@ import com.google.gson.GsonBuilder;
 import com.netbric.s5.cluster.ZkHelper;
 import com.netbric.s5.conductor.Config;
 import com.netbric.s5.conductor.exception.InvalidParamException;
-import org.eclipse.jetty.client.api.ContentResponse;
+// import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class SimpleHttpRpc {
 	static final Logger logger = LoggerFactory.getLogger(SimpleHttpRpc.class);
 	public static <T extends RestfulReply> T invokeGET(String url, Class<T> replyCls) throws Exception {
-		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
-		try {
-			client.start();
-
-			logger.info("Send request:{}", url);
-			ContentResponse response = client.newRequest(url)
-					.method(org.eclipse.jetty.http.HttpMethod.GET)
-					.send();
-			logger.info("Get response:{}", response.getContentAsString());
-			if (response.getStatus() < 200 || response.getStatus() >= 300) {
-				throw new IOException(String.format("Failed http GET %s, HTTP status:%d, reason:%s",
-						url, response.getStatus(), response.getReason()));
-			}
-			GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
-			Gson gson = builder.create();
-			T r;
-			r = gson.fromJson(new String(response.getContent()), replyCls);
-			client.stop();
-			if (r.retCode == RetCode.OK)
-				logger.info("Succeed http GET {}", url);
-			else {
-				logger.error("Failed http GET {}", url);
-				throw new IOException(String.format("Failed RPC invoke, code:%d, reason:%s", r.retCode, r.reason));
-			}
-			return r;
-		}finally {
-			client.destroy();
+		ThreadPoolExecutor exe = new ThreadPoolExecutor(2, 16, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32));
+		java.net.http.HttpClient  client = HttpClient.newBuilder()
+					.version(HttpClient.Version.HTTP_1_1)
+					.followRedirects(HttpClient.Redirect.NORMAL)
+					.connectTimeout(Duration.ofSeconds(20))
+					.executor(exe)
+					.build();
+		HttpRequest request = HttpRequest.newBuilder()
+				.uri(URI.create(url))
+				.header("Content-Type", "application/json; charset=UTF-8")
+				.timeout(Duration.ofSeconds(5))
+				.GET()
+				.build();
+		HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+		exe.shutdown();
+		logger.info("Get response:{}", response.body());
+		if(response.statusCode() < 200 || response.statusCode() >= 300)
+		{
+			
+			throw new IOException(String.format("Failed to invoke:%s, HTTP status:%d",
+					url, response.statusCode()));
 		}
+		GsonBuilder builder = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting();
+		Gson gson = builder.create();
+		T r;
+		r = gson.fromJson(new String(response.body()), replyCls);
+
+		if (r.retCode == RetCode.OK)
+			logger.info("Succeed http GET {}", url);
+		else {
+			logger.error("Failed http GET {}", url);
+			throw new IOException(String.format("Failed RPC invoke, code:%d, reason:%s", r.retCode, r.reason));
+		}
+		return r;
 	}
 
 	public static <T extends RestfulReply> T invokeStore(String ip, String op, Class<T> replyCls, Object ... args) throws Exception {

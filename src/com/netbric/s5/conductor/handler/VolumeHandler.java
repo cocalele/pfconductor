@@ -14,7 +14,11 @@ import com.netbric.s5.conductor.exception.StateException;
 import com.netbric.s5.conductor.rpc.*;
 import com.netbric.s5.orm.*;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.client.api.ContentResponse;
+//import org.eclipse.jetty.client.api.ContentResponse;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,12 +26,17 @@ import com.netbric.s5.conductor.HTTPServer.Request;
 import com.netbric.s5.conductor.HTTPServer.Response;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class VolumeHandler
 {
@@ -776,47 +785,52 @@ public class VolumeHandler
 		String jsonStr = gson.toJson(arg);
 
 		logger.info("Prepare volume:{} on node:{}, {}", arg.volume_name, s.mngtIp, jsonStr);
-		org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
+		//org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
+
 		try {
 
 //#if use Jetty http
-			client.start();
-			ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=%s&name=%s",
-					s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
-					.method(org.eclipse.jetty.http.HttpMethod.POST)
-					.content(new org.eclipse.jetty.client.util.StringContentProvider(jsonStr), "application/json")
-					.send();
-			logger.info("Get response:{}", response.getContentAsString());
-			if(response.getStatus() < 200 || response.getStatus() >= 300)
-			{
-				throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d, reason:%s",
-						arg.volume_name, s.mngtIp, response.getStatus(), response.getReason()));
-			}
-			RestfulReply r = gson.fromJson(new String(response.getContent()), RestfulReply.class);
-			client.stop();
+			
+			// client.start();
+			// ContentResponse response = client.newRequest(String.format("http://%s:49181/api?op=%s&name=%s",
+			// 		s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())))
+			// 		.method(org.eclipse.jetty.http.HttpMethod.POST)
+			// 		.content(new org.eclipse.jetty.client.util.StringContentProvider(jsonStr), "application/json")
+			// 		.send();
+			// logger.info("Get response:{}", response.getContentAsString());
+			// if(response.getStatus() < 200 || response.getStatus() >= 300)
+			// {
+			// 	throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d, reason:%s",
+			// 			arg.volume_name, s.mngtIp, response.getStatus(), response.getReason()));
+			// }
+			// RestfulReply r = gson.fromJson(new String(response.getContent()), RestfulReply.class);
+			// client.stop();
 
 //#else use java buildin http
-//			java.net.http.HttpClient client = HttpClient.newBuilder()
-//					.version(HttpClient.Version.HTTP_1_1)
-//					.followRedirects(HttpClient.Redirect.NORMAL)
-//					.connectTimeout(Duration.ofSeconds(20))
-//					.executor(new ThreadPoolExecutor(2, 16, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32)))
-//					.build();
-//			HttpRequest request = HttpRequest.newBuilder()
-//					.uri(URI.create(String.format("http://%s:49181/api?op=%s&name=%s",
-//							s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString()))))
-//					.header("Content-Type", "application/json; charset=UTF-8")
-//					.POST(HttpRequest.BodyPublishers.ofString(jsonStr))
-//					.build();
-//			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-//
-//			logger.info("Get response:{}", response.body());
-//			if(response.statusCode() < 200 || response.statusCode() >= 300)
-//			{
-//				throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d",
-//						arg.volume_name, s.mngtIp, response.statusCode()));
-//			}
-//			RestfulReply r = gson.fromJson(new String(response.body()), RestfulReply.class);
+
+			ThreadPoolExecutor exec = new ThreadPoolExecutor(2, 16, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32));
+			java.net.http.HttpClient  client = HttpClient.newBuilder()
+					.version(HttpClient.Version.HTTP_1_1)
+					.followRedirects(HttpClient.Redirect.NORMAL)
+					.connectTimeout(Duration.ofSeconds(5))
+					.executor(exec)
+					.build();
+			HttpRequest request = HttpRequest.newBuilder()
+					.uri(URI.create(String.format("http://%s:49181/api?op=%s&name=%s",
+							s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString()))))
+					.header("Content-Type", "application/json; charset=UTF-8")
+					.timeout(Duration.ofSeconds(5))
+					.POST(HttpRequest.BodyPublishers.ofString(jsonStr))
+					.build();
+			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			exec.shutdown();
+			logger.info("Get response:{}", response.body());
+			if(response.statusCode() < 200 || response.statusCode() >= 300)
+			{
+				throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d",
+						arg.volume_name, s.mngtIp, response.statusCode()));
+			}
+			RestfulReply r = gson.fromJson(new String(response.body()), RestfulReply.class);
 //end
 			if(r.retCode == RetCode.OK)
 				logger.info("Succeed {}:{} on node:{}", op, arg.volume_name, s.mngtIp);
@@ -827,7 +841,9 @@ public class VolumeHandler
 			throw e;
 		}
 		finally {
-			client.destroy();
+			//#if use Jetty http	
+			//client.destroy();
+
 		}
 
 	}

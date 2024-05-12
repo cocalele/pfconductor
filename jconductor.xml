@@ -89,18 +89,6 @@
     <pathelement location="${basedir}/lib/javax.persistence.jar"/>
   </path>
   
-  <path id="library.jetty-client-9.2.16.v20160414.classpath">
-    <pathelement location="${basedir}/lib/jetty-client-9.2.16.v20160414.jar"/>
-  </path>
-  
-  <path id="library.jetty-http-9.2.16.v20160414.classpath">
-    <pathelement location="${basedir}/lib/jetty-http-9.2.16.v20160414.jar"/>
-  </path>
-  
-  
-  <path id="library.jetty-util-9.2.16.v20160414.classpath">
-    <pathelement location="${basedir}/lib/jetty-util-9.2.16.v20160414.jar"/>
-  </path>
   
   <path id="library.mysql-connector-java-8.0.18.classpath">
     <pathelement location="${basedir}/lib/mysql-connector-java-8.0.18.jar"/>
@@ -159,11 +147,8 @@
     <path refid="library.hikaricp-3.4.1.classpath"/>
     <path refid="library.javax.persistence.classpath"/>
     <path refid="library.ini4j-0.5.4.classpath"/>
-    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
     <path refid="library.zookeeper-jute-3.5.6.classpath"/>
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
-    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
-    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
   </path>
@@ -180,11 +165,8 @@
     <path refid="library.hikaricp-3.4.1.classpath"/>
     <path refid="library.javax.persistence.classpath"/>
     <path refid="library.ini4j-0.5.4.classpath"/>
-    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
     <path refid="library.zookeeper-jute-3.5.6.classpath"/>
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
-    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
-    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
   </path>
@@ -201,11 +183,8 @@
     <path refid="library.hikaricp-3.4.1.classpath"/>
     <path refid="library.javax.persistence.classpath"/>
     <path refid="library.ini4j-0.5.4.classpath"/>
-    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
     <path refid="library.zookeeper-jute-3.5.6.classpath"/>
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
-    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
-    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
   </path>
@@ -223,11 +202,8 @@
     <path refid="library.hikaricp-3.4.1.classpath"/>
     <path refid="library.javax.persistence.classpath"/>
     <path refid="library.ini4j-0.5.4.classpath"/>
-    <path refid="library.jetty-util-9.2.16.v20160414.classpath"/>
     <path refid="library.zookeeper-jute-3.5.6.classpath"/>
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
-    <path refid="library.jetty-http-9.2.16.v20160414.classpath"/>
-    <path refid="library.jetty-client-9.2.16.v20160414.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
   </path>
