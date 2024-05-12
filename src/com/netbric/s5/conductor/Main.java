@@ -17,7 +17,9 @@ import com.sun.net.httpserver.HttpContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import com.netbric.s5.conductor.HTTPServer.ContextHandler;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 import com.netbric.s5.cluster.ClusterManager;
 
 public class Main
@@ -28,7 +30,7 @@ public class Main
 
 	}
 	static final Logger logger = LoggerFactory.getLogger(Main.class);
-	private static HttpServer httpServer;
+	private static PfcServer httpServer;
 
 	public static void main(String[] args)
 	{
@@ -84,7 +86,7 @@ public class Main
 			ClusterManager.updateSharedDisksFromZk();
 
 			// Start the server
-			httpServer = HttpServer.create(new InetSocketAddress(49180), 32);
+			httpServer = new PfcServer(49180);
 
 			// Add a single handler on context "/hello"
 
@@ -95,23 +97,22 @@ public class Main
 //			connector.setPort(49180);
 //			httpServer.setConnectors(new Connector[]{connector});
 
-			HttpContext context = httpServer.createContext("/s5c");
 
-			ContextHandler context = new ContextHandler();
-			context.setContextPath("/s5c");
-			context.setHandler(new S5RestfulHandler());
+			httpServer.addContext("/s5c", new S5RestfulHandler());
 
-			ContextHandlerCollection hc = new ContextHandlerCollection();
-			hc.addHandler(context);
-
-			ContextHandler dbgCtx = new ContextHandler();
-			dbgCtx.setContextPath("/debug");
-			dbgCtx.setHandler(new DebugHandler());
-			hc.addHandler(dbgCtx);
-			httpServer.setHandler(hc);
+			httpServer.addContext("/debug", new DebugHandler());
+			
 
 			httpServer.start();
 			logger.info("HTTP started on port 49180");
+			while(true){
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					
+					System.exit(0);
+				}
+			}
 		}
 		catch (Exception e1)
 		{
@@ -125,7 +126,6 @@ public class Main
 		ClusterManager.unregister();
 		try {
 			httpServer.stop();
-			httpServer.destroy();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

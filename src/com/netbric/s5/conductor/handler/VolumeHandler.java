@@ -18,8 +18,8 @@ import org.eclipse.jetty.client.api.ContentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
@@ -114,7 +114,7 @@ public class VolumeHandler
 
 	static final Logger logger = LoggerFactory.getLogger(VolumeHandler.class);
 
-	public RestfulReply expose_volume(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply expose_volume(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String volume_name;
@@ -163,7 +163,7 @@ public class VolumeHandler
 		}
 
 	}
-	public RestfulReply unexpose_volume(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply unexpose_volume(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String volume_name;
@@ -210,7 +210,7 @@ public class VolumeHandler
 
 	}
 
-	public RestfulReply create_volume(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply create_volume(Request request, Response response)
 	{
 
 
@@ -555,7 +555,7 @@ public class VolumeHandler
 		logger.info("Volume {} deleted, {} replicas deleted on store node", volume_name, rowaffected);
 		return r;
 	}
-	public RestfulReply delete_volume(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply delete_volume(Request request, Response response)
 	{
 
 		// the following SQL:
@@ -579,7 +579,7 @@ public class VolumeHandler
 		return new RestfulReply(op, RetCode.OK, "Deleted volumes:" + r );
 	}
 
-	public RestfulReply update_volume(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply update_volume(Request request, Response response)
 	{
 
 		String volume_name = null;
@@ -674,7 +674,7 @@ public class VolumeHandler
         }
         public List<Volume> volumes;
     }
-	public RestfulReply list_volume(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply list_volume(Request request, Response response)
 	{
 
 		String op = request.getParameter("op");
@@ -946,7 +946,7 @@ public class VolumeHandler
 		return arg;
 	}
 
-	public RestfulReply open_volume(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply open_volume(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -980,7 +980,7 @@ public class VolumeHandler
 		return r;
 	}
 
-	public RestfulReply createSnapshot(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply createSnapshot(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -997,7 +997,7 @@ public class VolumeHandler
 
 		}
 	}
-	public RestfulReply deleteSnapshot(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply deleteSnapshot(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -1046,7 +1046,7 @@ public class VolumeHandler
 		}
 	}
 
-	public RestfulReply recoveryVolume(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply recoveryVolume(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -1075,7 +1075,7 @@ public class VolumeHandler
 		}
 	}
 
-	public RestfulReply moveVolume(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply moveVolume(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -1106,7 +1106,7 @@ public class VolumeHandler
 		}
 	}
 
-	public RestfulReply queryTask(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply queryTask(Request request, Response response) {
 		String op = request.getParameter("op");
 
 		try {
@@ -1145,7 +1145,7 @@ public class VolumeHandler
 	}
 
 
-	public RestfulReply deepScrubVolume(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply deepScrubVolume(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -1163,7 +1163,7 @@ public class VolumeHandler
 
 		}
 	}
-	public RestfulReply scrubVolume(HttpServletRequest request, HttpServletResponse response) {
+	public RestfulReply scrubVolume(Request request, Response response) {
 		String op = request.getParameter("op");
 		String volume_name;
 		String tenant_name;
@@ -1181,7 +1181,7 @@ public class VolumeHandler
 
 		}
 	}
-	public RestfulReply check_volume_exists(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply check_volume_exists(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String volume_name;
@@ -1201,7 +1201,7 @@ public class VolumeHandler
 		}
 	}
 
-	public RestfulReply create_pfs2(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply create_pfs2(Request request, Response response)
 	{
 
 

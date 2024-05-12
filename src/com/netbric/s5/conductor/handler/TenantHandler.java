@@ -2,8 +2,8 @@ package com.netbric.s5.conductor.handler;
 
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 
 import com.netbric.s5.conductor.exception.InvalidParamException;
 import com.netbric.s5.conductor.rpc.RestfulReply;
@@ -15,7 +15,7 @@ import com.netbric.s5.orm.Tenant;
 public class TenantHandler
 {
 
-	public RestfulReply createTenant(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply createTenant(Request request, Response response)
 	{
 		Tenant t = new Tenant();
 		String op = request.getParameter("op");
@@ -40,7 +40,7 @@ public class TenantHandler
 		return new RestfulReply(op);
 	}
 
-	public RestfulReply deleteTenant(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply deleteTenant(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String name = null;
@@ -70,7 +70,7 @@ public class TenantHandler
 		}
 	}
 
-	public RestfulReply updateTenant(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply updateTenant(Request request, Response response)
 	{
 		Tenant nt = null;
 		String tenant_name = null;
@@ -137,7 +137,7 @@ public class TenantHandler
 		}
 		public List<Tenant> tenants;
 	}
-	public RestfulReply listTenant(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply listTenant(Request request, Response response)
 	{
 		List<Tenant> tenants = S5Database.getInstance().results(Tenant.class);
 		ListTenantReply r = new ListTenantReply("list_tenant");

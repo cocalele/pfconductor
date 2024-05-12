@@ -9,17 +9,17 @@ import com.netbric.s5.conductor.rpc.RetCode;
 import com.netbric.s5.orm.S5Database;
 import com.netbric.s5.orm.Volume;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.AbstractHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.netbric.s5.conductor.HTTPServer.ContextHandler;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 
-public class S5RestfulHandler extends com.sun.net.httpserver.HttpHandler
+public class S5RestfulHandler implements ContextHandler
 {
 	static final Logger logger = LoggerFactory.getLogger(S5RestfulHandler.class);
 	VolumeHandler volumeHandler = new VolumeHandler();
@@ -28,7 +28,7 @@ public class S5RestfulHandler extends com.sun.net.httpserver.HttpHandler
 	SnapshotManager snapshotHandler = new SnapshotManager();
 	ErrorHandler errorHandler = new ErrorHandler();
 
-	private RestfulReply unexport_volume(HttpServletRequest request, HttpServletResponse response) throws IOException
+	private RestfulReply unexport_volume(Request request, Response response) throws IOException
 	{
 		String op = request.getParameter("op");
 		String volume_name = request.getParameter("volume_name");
@@ -85,11 +85,10 @@ public class S5RestfulHandler extends com.sun.net.httpserver.HttpHandler
 
 	}
 
-	public synchronized void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
-			throws IOException
+	@Override
+	public synchronized int serve(Request request, Response response) throws IOException
 	{
 		response.setContentType("text/json; charset=utf-8");
-		response.setStatus(HttpServletResponse.SC_OK);
 		String op = request.getParameter("op");
 		//String fmt = Utils.getParamAsString(request, "fmt", "json");
 		logger.info("API called: op={}", request.getQueryString());
@@ -172,8 +171,10 @@ public class S5RestfulHandler extends com.sun.net.httpserver.HttpHandler
         Gson gson = builder.create();
         String reply_str = gson.toJson(reply);
         logger.info("{}", reply_str);
-        response.getWriter().write(reply_str);
-        baseRequest.setHandled(true);
+        response.send(200, reply_str);
+		return 0;
 	}
+
+
 
 }

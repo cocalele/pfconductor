@@ -3,8 +3,8 @@ package com.netbric.s5.conductor.handler;
 import java.util.HashMap;
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 
 import com.netbric.s5.conductor.rpc.ListDiskReply;
 import com.netbric.s5.conductor.rpc.ListStoreReply;
@@ -37,7 +37,7 @@ public class StoreHandler
 	 * @param response
 	 * @return
 	 */
-	public RestfulReply add_storenode(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply add_storenode(Request request, Response response)
 	{
 		StoreNode n = new StoreNode();
 		String op = request.getParameter("op");
@@ -79,7 +79,7 @@ public class StoreHandler
 		return new RestfulReply(op);
 	}
 
-	public RestfulReply delete_storenode(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply delete_storenode(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String name = null;
@@ -114,14 +114,14 @@ public class StoreHandler
 		}
 	}
 
-	public RestfulReply list_storenode(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply list_storenode(Request request, Response response)
 	{
 		List<StoreNode> nodes = S5Database.getInstance().results(StoreNode.class);
 
 		RestfulReply reply = new ListStoreReply(request.getParameter("op"), nodes);
 		return reply;
 	}
-	public RestfulReply list_tray(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply list_tray(Request request, Response response)
 	{
 		List<Tray> trays = S5Database.getInstance().results(Tray.class);
 
@@ -138,7 +138,7 @@ public class StoreHandler
 		}
 		public HashMap<String, String> results;
 	}
-	public RestfulReply sanity_check(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply sanity_check(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String hostname = request.getParameter("hostname");
@@ -232,7 +232,7 @@ public class StoreHandler
             super(op);
         }
     }
-	public RestfulReply list_nodeport(HttpServletRequest request, HttpServletResponse response)
+	public RestfulReply list_nodeport(Request request, Response response)
 	{
 		String op = request.getParameter("op");
 		String hostname = request.getParameter("node_name");

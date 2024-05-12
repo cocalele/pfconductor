@@ -9,13 +9,13 @@ import com.netbric.s5.orm.S5Database;
 import com.netbric.s5.orm.Tenant;
 import com.netbric.s5.orm.Volume;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AofHandler {
-	public static RestfulReply ls_children(HttpServletRequest request, HttpServletResponse response){
+	public static RestfulReply ls_children(Request request, Response response){
 		String op = request.getParameter("op");
 
 		String tenant_name;

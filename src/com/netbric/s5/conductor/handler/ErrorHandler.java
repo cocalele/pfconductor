@@ -14,14 +14,14 @@ import com.netbric.s5.orm.Volume;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import com.netbric.s5.conductor.HTTPServer.Request;
+import com.netbric.s5.conductor.HTTPServer.Response;
 import java.io.IOException;
 import java.sql.SQLException;
 
 public class ErrorHandler {
 	static final Logger logger = LoggerFactory.getLogger(ErrorHandler.class);
-	public RestfulReply handleError(HttpServletRequest request, HttpServletResponse response) throws InvalidParamException {
+	public RestfulReply handleError(Request request, Response response) throws InvalidParamException {
 		long repId = Utils.getParamAsLong(request, "rep_id");
 		int sc = Utils.getParamAsInt(request, "sc");
 
