@@ -117,7 +117,51 @@
   <path id="library.zookeeper-jute-3.5.6.classpath">
     <pathelement location="${basedir}/lib/zookeeper-jute-3.5.6.jar"/>
   </path>
+    <path id="library.commons-codec-1.11.classpath">
+	<pathelement location="${basedir}/lib/commons-codec-1.11.jar"/>
+  </path>
   
+  <path id="library.commons-logging-1.2.classpath">
+    <pathelement location="${basedir}/lib/commons-logging-1.2.jar"/>
+  </path>
+  
+  <path id="library.fluent-hc-4.5.14.classpath">
+    <pathelement location="${basedir}/lib/fluent-hc-4.5.14.jar"/>
+  </path>
+  
+  <path id="library.httpclient-4.5.14.classpath">
+    <pathelement location="${basedir}/lib/httpclient-4.5.14.jar"/>
+   </path>
+  
+  <path id="library.httpclient-cache-4.5.14.classpath">
+   <pathelement location="${basedir}/lib/httpclient-cache-4.5.14.jar"/>
+  </path>
+  
+  <path id="library.httpclient-osgi-4.5.14.classpath">
+    <pathelement location="${basedir}/lib/httpclient-osgi-4.5.14.jar"/>
+  </path>
+  
+  <path id="library.httpclient-win-4.5.14.classpath">
+    <pathelement location="${basedir}/lib/httpclient-win-4.5.14.jar"/>
+   </path>
+  
+  <path id="library.httpcore-4.4.16.classpath">
+   <pathelement location="${basedir}/lib/httpcore-4.4.16.jar"/>
+   </path>
+  
+  <path id="library.httpmime-4.5.14.classpath">
+   <pathelement location="${basedir}/lib/httpmime-4.5.14.jar"/>
+  </path>
+  
+  <path id="library.jna-4.5.2.classpath">
+    <pathelement location="${basedir}/lib/jna-4.5.2.jar"/>
+   </path>
+  
+  <path id="library.jna-platform-4.5.2.classpath">
+   <pathelement location="${basedir}/lib/jna-platform-4.5.2.jar"/>
+  </path>
+  
+
   <!-- Modules -->
   
   
@@ -151,6 +195,17 @@
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
+    <path refid="library.commons-codec-1.11.classpath"/>
+    <path refid="library.commons-logging-1.2.classpath"/>
+    <path refid="library.fluent-hc-4.5.14.classpath"/>
+    <path refid="library.httpclient-4.5.14.classpath"/>
+    <path refid="library.httpclient-cache-4.5.14.classpath"/>
+    <path refid="library.httpclient-osgi-4.5.14.classpath"/>
+    <path refid="library.httpclient-win-4.5.14.classpath"/>
+    <path refid="library.httpcore-4.4.16.classpath"/>
+    <path refid="library.httpmime-4.5.14.classpath"/>
+    <path refid="library.jna-4.5.2.classpath"/>
+    <path refid="library.jna-platform-4.5.2.classpath"/>   
   </path>
   
   <path id="jconductor.runtime.production.module.classpath">
@@ -169,6 +224,17 @@
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
+    <path refid="library.commons-codec-1.11.classpath"/>
+    <path refid="library.commons-logging-1.2.classpath"/>
+    <path refid="library.fluent-hc-4.5.14.classpath"/>
+    <path refid="library.httpclient-4.5.14.classpath"/>
+    <path refid="library.httpclient-cache-4.5.14.classpath"/>
+    <path refid="library.httpclient-osgi-4.5.14.classpath"/>
+    <path refid="library.httpclient-win-4.5.14.classpath"/>
+    <path refid="library.httpcore-4.4.16.classpath"/>
+    <path refid="library.httpmime-4.5.14.classpath"/>
+    <path refid="library.jna-4.5.2.classpath"/>
+    <path refid="library.jna-platform-4.5.2.classpath"/>   
   </path>
   
   <path id="jconductor.module.classpath">
@@ -187,6 +253,17 @@
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
+    <path refid="library.commons-codec-1.11.classpath"/>
+    <path refid="library.commons-logging-1.2.classpath"/>
+    <path refid="library.fluent-hc-4.5.14.classpath"/>
+    <path refid="library.httpclient-4.5.14.classpath"/>
+    <path refid="library.httpclient-cache-4.5.14.classpath"/>
+    <path refid="library.httpclient-osgi-4.5.14.classpath"/>
+    <path refid="library.httpclient-win-4.5.14.classpath"/>
+    <path refid="library.httpcore-4.4.16.classpath"/>
+    <path refid="library.httpmime-4.5.14.classpath"/>
+    <path refid="library.jna-4.5.2.classpath"/>
+    <path refid="library.jna-platform-4.5.2.classpath"/>   
   </path>
   
   <path id="jconductor.runtime.module.classpath">
@@ -206,6 +283,17 @@
     <path refid="library.mysql-connector-java-8.0.18.classpath"/>
     <path refid="library.norm-0.8.5.classpath"/>
     <path refid="library.java-ascii-table.classpath"/>
+    <path refid="library.commons-codec-1.11.classpath"/>
+    <path refid="library.commons-logging-1.2.classpath"/>
+    <path refid="library.fluent-hc-4.5.14.classpath"/>
+    <path refid="library.httpclient-4.5.14.classpath"/>
+    <path refid="library.httpclient-cache-4.5.14.classpath"/>
+    <path refid="library.httpclient-osgi-4.5.14.classpath"/>
+    <path refid="library.httpclient-win-4.5.14.classpath"/>
+    <path refid="library.httpcore-4.4.16.classpath"/>
+    <path refid="library.httpmime-4.5.14.classpath"/>
+    <path refid="library.jna-4.5.2.classpath"/>
+    <path refid="library.jna-platform-4.5.2.classpath"/>   
   </path>
   
   

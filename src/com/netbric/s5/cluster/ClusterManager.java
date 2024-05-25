@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
+import com.dieselpoint.norm.Transaction;
 import com.netbric.s5.orm.*;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -236,6 +237,8 @@ public class ClusterManager
 		try {
 			for(int i=0;i<2;i++) {
 				String path = String.format(zkBaseDir + "/stores/%d/%s", store_id, i==0 ?"ports":"rep_ports");
+				Transaction t = S5Database.getInstance().startTransaction();
+				S5Database.getInstance().transaction(t).sql("delete from t_port where store_id=? and purpose=?", store_id, i).execute();
 				List<String> ports = zk.getChildren(path, null);
 				for(String ip : ports)
 				{
@@ -246,12 +249,13 @@ public class ClusterManager
 					p.purpose = i;
 					p.status = Status.OK;
 
-					S5Database.getInstance().upsert(p);
+					S5Database.getInstance().transaction(t).upsert(p);
 					logger.info("upsert port:{}, purpose:{}", p.ip_addr, p.purpose);
 				}
+				t.commit();
 			}
 		} catch (KeeperException | InterruptedException e) {
-			logger.error("Failed update tray from zk",e);
+			logger.error("Failed update ports from zk",e);
 		}
 
 	}

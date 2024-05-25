@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 
 public class RebalanceManager {
@@ -172,8 +173,8 @@ public class RebalanceManager {
 
 				if(tx != null){
 					try {
-						tx.close();
-					} catch (IOException e) {
+						tx.getConnection().close();
+					} catch (SQLException e) {
 						logger.error("Failed close transaction", e);
 					}
 				}

@@ -20,11 +20,17 @@ import java.io.IOException;
 import java.sql.SQLException;
 
 public class ErrorHandler {
+	public static final int MSG_STATUS_NOT_PRIMARY = 0xC0;
+
 	static final Logger logger = LoggerFactory.getLogger(ErrorHandler.class);
 	public RestfulReply handleError(Request request, Response response) throws InvalidParamException {
 		long repId = Utils.getParamAsLong(request, "rep_id");
 		int sc = Utils.getParamAsInt(request, "sc");
 
+		if(sc == MSG_STATUS_NOT_PRIMARY) {
+			logger.error("replica:0x{} want to be primary from IP:{}", Long.toHexString(repId), request.getRemoteAddr());
+			return switchPrimary(repId);
+		}
 		logger.error("SET_REPLICA_STATUS_ERROR_ Set replica:0x{} to ERROR status, for sc:{} from IP:{}", Long.toHexString(repId),
 				sc, request.getRemoteAddr());
 
@@ -67,8 +73,8 @@ public class ErrorHandler {
 		finally{
 			if(trans != null){
 				try {
-					trans.close();
-				} catch (IOException e) {
+					trans.getConnection().close();
+				} catch (SQLException e) {
 					logger.error("Failed close transaction", e);
 				}
 			}
@@ -77,4 +83,62 @@ public class ErrorHandler {
 		return new RestfulReply("handle_error_reply", -1, "Unexpected code branch");
 	}
 
+	private ErrorReportReply switchPrimary(long repId) {
+		long volId = VolumeIdUtils.replicaToVolumeId(repId);
+		long shardId = VolumeIdUtils.replicaToShardId(repId);
+		Transaction trans = S5Database.getInstance().startTransaction();
+		try {
+			S5Database.getInstance().transaction(trans).sql("select * from t_volume where id=? for update", volId).first(Volume.class);
+			long primaryIndex = S5Database.getInstance().queryLongValue("select primary_rep_index from t_shard where id=?", shardId);
+			long primaryRepId = shardId | primaryIndex;
+			if(primaryRepId == repId) {
+				logger.info("{} is already primary", Long.toHexString(repId));
+				long newMeta = S5Database.getInstance().queryLongValue("select meta_ver from t_volume where id=?", volId);
+				return new ErrorReportReply("handle_error_reply", ErrorReportReply.ACTION_REOPEN, (int)newMeta);
+			}
+
+
+
+			logger.error("SET_REPLICA_STATUS_ERROR_ Set replica:0x{} to ERROR status, for replica:0x{} receive client IO", Long.toHexString(primaryRepId), Long.toHexString(repId));
+
+			int changed = S5Database.getInstance().transaction(trans) //never set the last replica to ERROR status
+					.sql("update t_replica set status=IF((select count(*) from t_replica where status='OK' and volume_id=?) > 1, 'ERROR', status) where id=?",
+							volId, primaryRepId).execute().getRowsAffected();
+			logger.info("{} replicas was set to ERROR state", changed);
+			if(changed > 0) {
+				S5Database.getInstance().transaction(trans).sql("update t_shard set status=? where id=?", Status.DEGRADED, shardId).execute();
+				changed = S5Database.getInstance().transaction(trans).sql("update t_volume set status=? where id=?", Status.DEGRADED, volId)
+						.execute().getRowsAffected();
+				if(changed > 0) {
+					
+					logger.warn("Volume:{} status changed to DEGRADED due to error handling", volId);
+				}
+
+			}
+
+			S5Database.getInstance().transaction(trans).sql("update t_shard set primary_rep_index=? where id=? ", 
+					VolumeIdUtils.replicaIdToIndex(repId), shardId).execute();
+
+			
+			trans.commit();
+			long newMeta = S5Database.getInstance().queryLongValue("select meta_ver from t_volume where id=?", volId);
+			return new ErrorReportReply("handle_error_reply", ErrorReportReply.ACTION_REOPEN, (int)newMeta);
+		}
+		catch(DbException | SQLException e) {
+			trans.rollback();
+			logger.error("Failed uddate DB in handle error and will suicide ... \n, {}", e);
+			Main.suicide();
+		}
+		finally{
+			if(trans != null){
+				try {
+					trans.getConnection().close();
+				} catch (SQLException e) {
+					logger.error("Failed close transaction", e);
+				}
+			}
+
+		}
+		return new ErrorReportReply("handle_error_reply", ErrorReportReply.ACTION_REOPEN, "Unexpected code branch");
+	}
 }

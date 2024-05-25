@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.persistence.Transient;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Vector;
 
@@ -142,8 +143,8 @@ public class Scrubber {
 									finally{
 										if(trans != null){
 											try {
-												trans.close();
-											} catch (IOException e) {
+												trans.getConnection().close();
+											} catch (SQLException e) {
 												logger.error("Failed close transaction", e);
 											}
 										}
@@ -237,8 +238,8 @@ public class Scrubber {
 										finally{
 											if(trans != null){
 												try {
-													trans.close();
-												} catch (IOException e) {
+													trans.getConnection().close();
+												} catch (SQLException e) {
 													logger.error("Failed close transaction", e);
 												}
 											}

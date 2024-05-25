@@ -19,12 +19,23 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.InputStreamEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.netbric.s5.conductor.HTTPServer.Request;
 import com.netbric.s5.conductor.HTTPServer.Response;
 import java.io.IOException;
+import java.io.StringBufferInputStream;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -37,6 +48,7 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
 
 public class VolumeHandler
 {
@@ -358,8 +370,8 @@ public class VolumeHandler
 		finally{
 			if(trans != null){
 				try {
-					trans.close();
-				} catch (IOException e) {
+					trans.getConnection().close();
+				} catch (SQLException e) {
 					logger.error("Failed close transaction", e);
 				}
 			}
@@ -787,6 +799,8 @@ public class VolumeHandler
 		logger.info("Prepare volume:{} on node:{}, {}", arg.volume_name, s.mngtIp, jsonStr);
 		//org.eclipse.jetty.client.HttpClient client = new org.eclipse.jetty.client.HttpClient();
 
+		CloseableHttpClient httpclient = null;
+		CloseableHttpResponse response = null;
 		try {
 
 //#if use Jetty http
@@ -806,31 +820,55 @@ public class VolumeHandler
 			// RestfulReply r = gson.fromJson(new String(response.getContent()), RestfulReply.class);
 			// client.stop();
 
-//#else use java buildin http
+//#else apache client
+			URI uri = URI.create(String.format("http://%s:49181/api?op=%s&name=%s",
+				s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString())));
+			httpclient = HttpClients.createDefault();
+			
+			HttpPost httppost = new HttpPost(uri);
+			RequestConfig requestConfig = RequestConfig.custom()
+			 		.setConnectTimeout(5000).setConnectionRequestTimeout(10000)
+			 		.setSocketTimeout(5000).build();
+			httppost.setConfig(requestConfig);
+			InputStreamEntity reqEntity = new InputStreamEntity(
+                    new StringBufferInputStream(jsonStr), -1, ContentType.APPLICATION_OCTET_STREAM);
+			httppost.setEntity(reqEntity);
+			response = httpclient.execute(httppost);
+			HttpEntity entity = response.getEntity();
+			String content = EntityUtils.toString(entity, StandardCharsets.UTF_8);
+			int httpStatus = response.getStatusLine().getStatusCode();
 
-			ThreadPoolExecutor exec = new ThreadPoolExecutor(2, 16, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32));
-			java.net.http.HttpClient  client = HttpClient.newBuilder()
-					.version(HttpClient.Version.HTTP_1_1)
-					.followRedirects(HttpClient.Redirect.NORMAL)
-					.connectTimeout(Duration.ofSeconds(5))
-					.executor(exec)
-					.build();
-			HttpRequest request = HttpRequest.newBuilder()
-					.uri(URI.create(String.format("http://%s:49181/api?op=%s&name=%s",
-							s.mngtIp, op, URLEncoder.encode(arg.volume_name, StandardCharsets.UTF_8.toString()))))
-					.header("Content-Type", "application/json; charset=UTF-8")
-					.timeout(Duration.ofSeconds(5))
-					.POST(HttpRequest.BodyPublishers.ofString(jsonStr))
-					.build();
-			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-			exec.shutdown();
-			logger.info("Get response:{}", response.body());
-			if(response.statusCode() < 200 || response.statusCode() >= 300)
+//use java buildin http
+			//ThreadPoolExecutor exec = new ThreadPoolExecutor(2, 16, 10, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32));
+//			HttpClient  client = HttpClient.newBuilder()
+//					.version(HttpClient.Version.HTTP_1_1)
+//					.followRedirects(HttpClient.Redirect.NORMAL)
+//					.connectTimeout(Duration.ofSeconds(5))
+//					.executor(exec)
+//					.build();
+			// HttpRequest request = HttpRequest.newBuilder()
+			// 		.uri(uri)
+			// 		.header("Content-Type", "application/json; charset=UTF-8")
+			// 		.timeout(Duration.ofSeconds(5))
+			// 		.POST(HttpRequest.BodyPublishers.ofString(jsonStr))
+			// 		.build();
+			// exec.execute(new Runnable() {
+			// 	@Override
+			// 	public void run() {
+			// 		Thread.sleep(5*1000);
+			// 	}
+			// });
+			//HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+			//content=response.body();
+			//httpStatus = response.statusCode();
+			//exec.shutdown();
+			logger.info("Get response:{}", content);
+			if(httpStatus< 200 || httpStatus >= 300)
 			{
 				throw new IOException(String.format("Failed to prepare_volume:%s on node:%s, HTTP status:%d",
-						arg.volume_name, s.mngtIp, response.statusCode()));
+						arg.volume_name, s.mngtIp, httpStatus));
 			}
-			RestfulReply r = gson.fromJson(new String(response.body()), RestfulReply.class);
+			RestfulReply r = gson.fromJson(new String(content), RestfulReply.class);
 //end
 			if(r.retCode == RetCode.OK)
 				logger.info("Succeed {}:{} on node:{}", op, arg.volume_name, s.mngtIp);
@@ -841,11 +879,15 @@ public class VolumeHandler
 			throw e;
 		}
 		finally {
-			//#if use Jetty http	
+			
 			//client.destroy();
-
+			if(response != null)
+				response.close();
+			//#else use java buildin http
+			if(httpclient != null)
+				httpclient.close();
+			
 		}
-
 	}
 
 	private static void markReplicasOnStoreAsError(int storeId, long volumeId)
@@ -938,6 +980,7 @@ public class VolumeHandler
 					.sql("select t_store.* from t_store where id in (select distinct store_id from t_replica where volume_id=?)  and status='OK'",
 							arg.volume_id).results(StoreNode.class);
 
+			
 			for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
 				StoreNode s = it.next();
 				if(!s.status.equals(Status.OK)){
@@ -958,7 +1001,20 @@ public class VolumeHandler
 					throw new StateException(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
 				}
 			}
-		} while (need_reprepare && succeed > 0);
+			if(need_reprepare && succeed > 0){
+				try
+				{
+					Thread.sleep(500);//zookeeper need time to change state if store down
+				}
+				catch (InterruptedException e)
+				{
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				continue;
+			}
+			break;
+		} while (true);
 		return arg;
 	}
 
@@ -1327,8 +1383,8 @@ public class VolumeHandler
 		finally{
 			if(trans != null){
 				try {
-					trans.close();
-				} catch (IOException e) {
+					trans.getConnection().close();
+				} catch (SQLException e) {
 					logger.error("Failed close transaction", e);
 				}
 			}

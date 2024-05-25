@@ -25,4 +25,8 @@ public class VolumeIdUtils {
 	static public int replicaToShardIndex(long repId) {
 		return (int)((repId & 0x0000000000fffff0L)>>4);
 	}
+
+	static public int replicaIdToIndex(long repId) {
+		return (int)(repId & 0x0f);
+	}
 }
