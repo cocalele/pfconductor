@@ -984,7 +984,8 @@ public class VolumeHandler
 			for (Iterator<StoreNode> it = stores.iterator(); it.hasNext(); ) {
 				StoreNode s = it.next();
 				if(!s.status.equals(Status.OK)){
-					logger.warn("Prepare volume:{} on store:{}, but store status is:{}", volume_name, s.id, s.status);
+					//logger.warn("Prepare volume:{} on store:{}, but store status is:{}", volume_name, s.id, s.status);
+					continue;//don't try to prepare on failed node. Failed node should suicide after a while
 				}
 				RestfulReply rply = null;
 				try {
@@ -993,15 +994,15 @@ public class VolumeHandler
 				} catch (Exception e) {
 					logger.error("Failed[2] to prepare volume {} on store:{}, for:{}", volume_name, s.mngtIp, e);
 					markReplicasOnStoreAsError(s.id, arg.volume_id);
-					need_reprepare = true;
-					break;
+					need_reprepare = (succeed > 0); //replica status changed, nodes prepared before this(succeed>0) need to re-prepare
+					continue;
 				}
 				if (rply.retCode != RetCode.OK) {
 					logger.error(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
 					throw new StateException(String.format("Failed to prepare volume %s on store:%s, for:%s", volume_name, s.mngtIp, rply.reason));
 				}
 			}
-			if(need_reprepare && succeed > 0){
+			if(need_reprepare){
 				try
 				{
 					Thread.sleep(500);//zookeeper need time to change state if store down

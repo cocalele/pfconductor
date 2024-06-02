@@ -41,6 +41,7 @@ public class ErrorHandler {
 			logger.error("replica:0x{} want to be primary from IP:{}", Long.toHexString(repId), request.getRemoteAddr());
 			return switchPrimary(repId);
 		case MSG_STATUS_REP_TO_PRIMARY:
+			logger.error("Uuexcepted error, Replicate write to primary node, from primary:{}", request.getRemoteAddr());
 		case MSG_STATUS_AIOERROR:
 		case MSG_STATUS_CONN_LOST:
 		case MSG_STATUS_NOSPACE:
