@@ -53,20 +53,25 @@ public class Main
 			logger.info("use config file: {}", cfgPath);
 			Config cfg = new Config(cfgPath);
 
-			InetAddress ia = null;
-			try
-			{
-				ia = InetAddress.getLocalHost();
-			}
-			catch (UnknownHostException e1)
-			{
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			String managmentIp = ia.getHostAddress();
+			//InetAddress ia = null;
+			//try
+			//{
+			//	ia = InetAddress.getLocalHost(); //may fail in container with --network host
+			//}
+			//catch (UnknownHostException e1)
+			//{
+			//	// TODO Auto-generated catch block
+			//	e1.printStackTrace();
+			//}
+			//String managmentIp = ia.getHostAddress();
 
 
-			managmentIp = cfg.getString("conductor" , "mngt_ip", managmentIp);
+			String managmentIp = cfg.getString("conductor" , "mngt_ip", null);
+			if(managmentIp == null)
+			{
+				System.err.println("managmentIp ip not specified in config file");
+				System.exit(1);
+			}
 			String zkIp = cfg.getString("zookeeper", "ip", null, true);
 			if(zkIp == null)
 			{
