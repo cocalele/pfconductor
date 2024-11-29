@@ -21,5 +21,8 @@ jobs:
       with:
         java-version: '11'
         distribution: 'temurin'
+    - name: Update Submodules
+      run: |
+        git submodule update --init --recursive
     - name: Build with Ant
       run: ant -noinput -buildfile jconductor.xml
