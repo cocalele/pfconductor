@@ -105,7 +105,7 @@ public class RecoveryManager {
 					break;
 				} else if(status.status == BackgroundTaskManager.TaskStatus.FAILED){
 					logger.error("Failed recovery replica:0x{} on store:{} complete failed", Long.toHexString(r.replica_id), r.store_ip);
-					recovery_ok = 0;
+					recovery_ok = -1;
 					break;
 				}
 			}
