@@ -25,6 +25,7 @@ public class RecoveryManager {
 		long total = S5Database.getInstance().queryLongValue("select count(*) from t_replica where volume_id=? and status != ?",  v.id, Status.OK);
 		List<Shard> illhealthShards = S5Database.getInstance().where("volume_id=? and status != ?", v.id, Status.OK).results(Shard.class);
 		for(Shard s : illhealthShards) {
+			v = Volume.fromId(v.id);
 			recoveryShard(task, v, total, s);
 		}
 		S5Database.getInstance().sql("update t_volume set status=IF((select count(*) from t_shard where status!='OK' and volume_id=?) = 0, 'OK', status)" +
