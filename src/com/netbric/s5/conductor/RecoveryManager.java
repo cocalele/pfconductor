@@ -105,7 +105,7 @@ public class RecoveryManager {
 					break;
 				} else if(status.status == BackgroundTaskManager.TaskStatus.FAILED){
 					logger.error("Failed recovery replica:0x{} on store:{} complete failed", Long.toHexString(r.replica_id), r.store_ip);
-					recovery_ok = -1;
+					recovery_ok = 0;
 					break;
 				}
 			}
@@ -125,8 +125,11 @@ public class RecoveryManager {
 					logger.error("end_recovery on slave node:{} failed, reason:{}", r.store_ip, reply.reason);
 					throw new Exception(reply.reason);
 				}
-				logger.info("SET_REPLICA_STATUS_OK Set replica:0x{} to OK status, recovery succeeded", Long.toHexString(r.replica_id));
-				S5Database.getInstance().sql("update t_replica set status='OK' where id=?", r.replica_id).execute();
+
+				if (recovery_ok == 1) {
+				        logger.info("SET_REPLICA_STATUS_OK Set replica:0x{} to OK status, recovery succeeded", Long.toHexString(r.replica_id));
+				        S5Database.getInstance().sql("update t_replica set status='OK' where id=?", r.replica_id).execute();
+				}
 			}
 
 			task.progress += 100/total;
