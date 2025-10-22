@@ -71,7 +71,7 @@ public class ErrorHandler {
 			logger.info("{} replicas was set to ERROR state", changed);
 			if(changed > 0) {
 				long primaryIndex = S5Database.getInstance().queryLongValue("select primary_rep_index from t_shard where id=?", shardId);
-				if(primaryIndex == repId) {
+				if (primaryIndex == VolumeIdUtils.replicaIdToIndex(repId)) {
 					S5Database.getInstance().transaction(trans).sql("update t_shard set primary_rep_index=" +
 							"(select replica_index  from t_replica where shard_id=? and status='OK' " +
 								"order by status_time asc, replica_index asc limit 1) " +
