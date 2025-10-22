@@ -220,6 +220,8 @@ public class ClusterManager
 
 					}
 				});
+				Transaction ts = S5Database.getInstance().startTransaction();
+				S5Database.getInstance().transaction(ts).sql("delete from t_tray where store_id=? and device=? and uuid!=?", tr.store_id, tr.device, tr.uuid).execute();
 				if(S5Database.getInstance().sql("select count(*) from t_tray where uuid=?", t).first(long.class) == 0)
 					S5Database.getInstance().insert(tr);
 				else
