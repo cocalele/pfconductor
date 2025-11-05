@@ -567,6 +567,20 @@ public class VolumeHandler
 				logger.error("Failed delete replica:{}, {}", Long.toHexString(r.replica_id), e1);
 			}
 		}
+                
+		List<StoreNode> stores = S5Database.getInstance().sql(" select * from t_store where id in (select store_id from t_replica where volume_id=?) " +
+				"and status='OK'", volume.id)
+				.results(StoreNode.class);
+                for(StoreNode s : stores) {
+			logger.info("Deleting volume:{} on store:{}",  Long.toHexString(volume.id), s.mngtIp);
+			try {
+				SimpleHttpRpc.invokeStore(s.mngtIp, "delete_volume", RestfulReply.class, "volume_name", volume_name,
+						"volume_id", volume.id);
+			} catch (Exception e2) {
+				logger.error("Failed delete volume:{}, {}", Long.toHexString(volume.id), e2);
+			}
+		}
+
 		int rowaffected = S5Database.getInstance()
 				.sql("delete from t_replica where t_replica.volume_id in (select t_volume.id from t_volume where name='"
 						+ volume_name + "' and tenant_id=" + t_idx + ")")
