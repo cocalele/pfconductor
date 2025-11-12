@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 
+import com.netbric.s5.conductor.handler.TenantHandler.*;
+
 public class CliMain
 {
 
@@ -124,6 +126,15 @@ public class CliMain
 				@Override
 				public void run(Namespace cmd, Config cfg) throws Exception {
 					cmd_list_store(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("list_tenant");
+			sp.description("List tenant info");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_tenant(cmd, cfg);
 				}
 			});
 
@@ -340,6 +351,26 @@ public class CliMain
 		String[][] data = new String[r.storeNodes.size()][];
 		for(int i=0;i<r.storeNodes.size();i++) {
 			data[i] = new String[]{ Long.toString(r.storeNodes.get(i).id), r.storeNodes.get(i).mngtIp, r.storeNodes.get(i).status };
+		}
+		ASCIITable.getInstance().printTable(header, data);
+
+	}
+	static void cmd_list_tenant(Namespace cmd, Config cfg) throws Exception {
+		ListTenantReply r = SimpleHttpRpc.invokeConductor(cfg, "list_tenant", ListTenantReply.class);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed list_tenant");
+		else
+			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Id", "Car Id", "Name", "Password"};
+
+		String[][] data = new String[r.tenants.size()][];
+		for(int i=0;i<r.tenants.size();i++) {
+			data[i] = new String[]{
+				Long.toString(r.tenants.get(i).id),
+				Long.toString(r.tenants.get(i).car_id),
+				r.tenants.get(i).name,
+				r.tenants.get(i).pass_wd,
+			};
 		}
 		ASCIITable.getInstance().printTable(header, data);
 
