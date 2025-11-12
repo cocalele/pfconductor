@@ -766,7 +766,7 @@ public class VolumeHandler
 			shard.primary_rep_index = dbShard.primary_rep_index;
 			long shardId = dbShard.id;
 
-			shard.replicas = S5Database.getInstance().sql("select r.replica_id as id, r.replica_index as 'index', r.tray_uuid, r.store_id, r.status, r.store_id, r.status, r.rep_ports " +
+			shard.replicas = S5Database.getInstance().sql("select r.replica_id as id, r.replica_index as 'index', r.store_id, r.tray_uuid, r.status, r.rep_ports " +
 					" from v_replica_ext r where r.shard_id=?", shardId)
 					.results(ReplicaArg.class);
 			if (shard.replicas.size() == 0)
