@@ -85,6 +85,17 @@ public class CliMain
 			Subparser sp = sps.addParser("get_leader_conductor");
 			sp.description("Get leader pfconductor IP");
 
+			sp = sps.addParser("handle_error");
+			sp.description("Handle error case when some replicas are in error state");
+			sp.addArgument("-i").help("Replica id").required(true).type(Integer.class).metavar("rep_id");
+			sp.addArgument("-sc").help("State code, 0xC0 - 0xCA, e.g.: 0xC0 means MSG_STATUS_NOT_PRIMARY").required(true).metavar("sc");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_handle_error(cmd, cfg);
+				}
+			});
+
 			sp = sps.addParser("create_volume");
 			sp.description("Create volume");
 			sp.addArgument("-v").help("Volume name to create").required(true).metavar("volume_name");
@@ -214,6 +225,21 @@ public class CliMain
 		}
 
     }
+
+	private static void cmd_handle_error(Namespace cmd, Config cfg) throws Exception {
+		long repId = cmd.getInt("i");
+		System.out.println("repId: " + repId);
+		long stateCode = Long.decode(cmd.getString("sc"));
+		System.out.println("stateCode: " + stateCode);
+		
+		RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "handle_error", RestfulReply.class,
+				"rep_id", repId,
+				"sc", stateCode);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed handle_error for replica id:{}", repId);
+		else
+			throw new IOException(String.format("Failed to handle_error for replica id:%d , code:%d, reason:%s", repId, r.retCode, r.reason));
+	}
 
 	private static void cmd_create_volume(Namespace cmd, Config cfg) throws Exception {
 		String volumeName = cmd.getString("v");
