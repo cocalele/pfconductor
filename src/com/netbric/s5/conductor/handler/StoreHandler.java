@@ -235,19 +235,19 @@ public class StoreHandler
 	public RestfulReply list_nodeport(Request request, Response response)
 	{
 		String op = request.getParameter("op");
-		String hostname = request.getParameter("node_name");
-		if (StringUtils.isEmpty(hostname))
-			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: node_name");
+		String hostid = request.getParameter("id"); // node_name
+		if (StringUtils.isEmpty(hostid))
+			return new RestfulReply(op, RetCode.INVALID_ARG, "Invalid argument: id");
 		try
 		{
-			StoreNode node = S5Database.getInstance().where("name=?", hostname).first(StoreNode.class);
+			StoreNode node = S5Database.getInstance().where("id=?", hostid).first(StoreNode.class); // name=?
 			if (node == null)
-				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostname);
+				return new RestfulReply(op, RetCode.INVALID_ARG, "No such store node:" + hostid);
 			SshExec executer = new SshExec(node.mngtIp);
 			RestfulReply r = new RestfulReply(op);
 			boolean allok = true;
 			String[] ethArray = null;
-			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eth'|awk '{print $2}'`"))
+			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eno'|awk '{print $2}'`"))  // eth
 			{
 			    r.setFail(-1, executer.getStdout());
 				allok = false;
@@ -258,7 +258,7 @@ public class StoreHandler
 				result1 = result1.replace("\n", "");
 				ethArray = result1.split(" ");
 			}
-			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eth'|awk '{print $4}'|awk -F/ '{print $1}'`"))
+			if (0 != executer.execute("echo `ip -4 -o addr|grep 'eno'|awk '{print $4}'|awk -F/ '{print $1}'`"))   // eth
 			{
                 r.setFail(-1, executer.getStdout());
 				allok = false;
