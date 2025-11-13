@@ -15,7 +15,8 @@ import org.slf4j.LoggerFactory;
 
 public class SshExec
 {
-	static String ssh_bin = "c:/eclipse/plink.exe";
+	// static String ssh_bin = "c:/eclipse/plink.exe";
+	static String ssh_bin = "/usr/bin/plink";  // Liunx need to install plink
 	static Map<String, String> env = new HashMap<String, String>();
 
 	static
@@ -40,14 +41,20 @@ public class SshExec
 		cl.addArgument("-T");
 		// cl.addArgument("-n"); //use ssh
 		cl.addArgument("-pw"); // plink
-		cl.addArgument("123456"); // plink
+		// cl.addArgument("123456"); // plink
+		cl.addArgument("Flysl1ce");  //122:flyslice
 		cl.addArgument("-l");
 		cl.addArgument("root");
 
 		// cl.addArgument("-p");
 		// cl.addArgument("822");
 		cl.addArgument(targetIp);
-		cl.addArgument("source /etc/profile; " + cmdLine);
+		// cl.addArgument("source /etc/profile; " + cmdLine);
+		String remoteCmd = "source /etc/profile; " + cmdLine;
+		remoteCmd = remoteCmd.replace("\"", "\\\"");
+		cl.addArgument(remoteCmd, false);
+		logger.info("cmd after sshexec: {}", remoteCmd);
+
 		DefaultExecutor exec = new DefaultExecutor();
 		exec.setStreamHandler(new PumpStreamHandler(stdouterr));
 		stdouterr.reset();
@@ -68,7 +75,16 @@ public class SshExec
 	{
 		try
 		{
-			return stdouterr.toString("UTF-8");
+			// 修复2：清除输出中的换行符、回车符，并去除首尾空白
+			String output = stdouterr.toString("UTF-8");
+			// 替换所有换行和回车符
+			output = output.replaceAll("[\n\r\t]", " ");
+			// 去除首尾空白
+			output = output.trim();
+			// 合并多个空格为一个
+			output = output.replaceAll("\\s+", " ");
+			return output;
+			// return stdouterr.toString("UTF-8");
 		}
 		catch (UnsupportedEncodingException e)
 		{
