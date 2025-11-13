@@ -136,6 +136,9 @@ public class CliMain
 				@Override
 				public void run(Namespace cmd, Config cfg) throws Exception {
 					cmd_list_tenant(cmd, cfg);
+				}
+			});
+
 			sp=sps.addParser("list_port");
 			sp.description("List port info");
 			sp.addArgument("-i").help("Node Id name to check the port").required(true).metavar("node_id");
@@ -232,7 +235,7 @@ public class CliMain
 			System.exit(1);
 		}
 
-    }
+	}
 
 	private static void cmd_create_volume(Namespace cmd, Config cfg) throws Exception {
 		String volumeName = cmd.getString("v");
@@ -382,6 +385,7 @@ public class CliMain
 		}
 		ASCIITable.getInstance().printTable(header, data);
 
+	}
 	static void cmd_list_port(Namespace cmd, Config cfg) throws Exception {
 		String id = cmd.getString("i");
 		System.out.println("id:" + id);
