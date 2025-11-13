@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 
+import com.netbric.s5.conductor.handler.StoreHandler.*;
+
 public class CliMain
 {
 
@@ -137,6 +139,16 @@ public class CliMain
 				@Override
 				public void run(Namespace cmd, Config cfg) throws Exception {
 					cmd_list_store(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("list_port");
+			sp.description("List port info");
+			sp.addArgument("-i").help("Node Id name to check the port").required(true).metavar("node_id");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_port(cmd, cfg);
 				}
 			});
 
@@ -356,6 +368,29 @@ public class CliMain
 		}
 		ASCIITable.getInstance().printTable(header, data);
 
+	}
+	static void cmd_list_port(Namespace cmd, Config cfg) throws Exception {
+		String id = cmd.getString("i");
+		System.out.println("id:" + id);
+		ListNodePortReply r = SimpleHttpRpc.invokeConductor(cfg, "list_port", ListNodePortReply.class,
+						"id", id);
+		if(r.retCode == RetCode.OK)
+		logger.info("Succeed list_port");
+		else
+			throw new IOException(String.format("Failed to list_port , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Name", "IP Address", "Store Id", "Purpose"}; // "Status",
+
+		String[][] data = new String[r.ports.length][];
+		for (int i = 0; i < r.ports.length; i++) {
+			data[i] = new String[]{
+				r.ports[i].name,
+				r.ports[i].ip_addr,
+				Long.toString(r.ports[i].store_id),
+				Long.toString(r.ports[i].purpose),
+				// r.ports[i].status
+			};
+		}
+		ASCIITable.getInstance().printTable(header, data);
 	}
 	static void cmd_list_disk(Namespace cmd, Config cfg) throws Exception {
 		ListDiskReply r = SimpleHttpRpc.invokeConductor(cfg, "list_disk",  ListDiskReply.class);
