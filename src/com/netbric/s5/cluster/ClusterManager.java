@@ -142,6 +142,27 @@ public class ClusterManager
 			List<String> nodes = zk.getChildren(zkBaseDir + "/stores", null);
 			for(String n : nodes)
 			{
+				String storeOnZk = String.format(zkBaseDir + "/stores/%s", n);
+				logger.info("watchNode on: {} ", storeOnZk);
+				zkHelper.watchNode(storeOnZk, new ZkHelper.NodeChangeCallback() {
+					@Override
+					void onNodeCreate(String childPath) {
+						logger.info("store will be created, {}", childPath);
+					}
+
+					@Override
+					void onNodeDelete(String childPath) {
+						logger.info("delete all port infos, {}", childPath);
+						logger.info("delete all tray infos, {}", childPath);
+						logger.info("delete all store infos, {}", childPath);
+						Transaction t = S5Database.getInstance().startTransaction();
+						S5Database.getInstance().transaction(t).sql("delete from t_port where store_id=?", n).execute();
+						S5Database.getInstance().transaction(t).sql("delete from t_tray where store_id=?", n).execute();
+						S5Database.getInstance().transaction(t).sql("delete from t_store where id=?", n).execute();
+						t.commit();
+					}
+				});
+
 				updateStoreFromZk(Integer.parseInt(n));
 			}
 			validateStores();
@@ -206,6 +227,8 @@ public class ClusterManager
 				tr.device = new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/devname", false, null));
 				tr.raw_capacity = Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/capacity", false, null)));
 				tr.object_size =  Long.parseLong(new String(zk.getData(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/object_size", false, null)));
+				String trayOnlineOnZk = String.format(zkBaseDir + "/stores/%d/trays/%s/online", store_id, t);
+				logger.info("watchNode on: {} ", trayOnlineOnZk);
 				zkHelper.watchNode(zkBaseDir + "/stores/"+store_id+"/trays/"+t+"/online", new ZkHelper.NodeChangeCallback() {
 					@Override
 					void onNodeCreate(String childPath) {
@@ -284,17 +307,23 @@ public class ClusterManager
 			List<String> nodes = zk.getChildren(zkBaseDir + "/stores", null);
 			for(String n : nodes)
 			{
+				String storeAliveOnZk = String.format(zkBaseDir + "/stores/%s/alive", n);
+				logger.info("watchNode on: {} ", storeAliveOnZk);
 				zkHelper.watchNode(zkBaseDir + "/stores/" + n + "/alive", new AliveWatchCbk(Integer.parseInt(n)));
 			}
 		} catch (KeeperException | InterruptedException e) {
 			logger.error("Failed access zk",e);
 		}
 
+		String storesOnZk = zkBaseDir + "/stores";
+		logger.info("watchNewChild on: {} ", storesOnZk);
 		zkHelper.watchNewChild(zkBaseDir + "/stores", new ZkHelper.NewChildCallback() {
 			@Override
 			void onNewChild(String childPath) {
 				logger.info("new store found on zk: {}", childPath);
 				int id = Integer.parseInt(childPath.substring(childPath.lastIndexOf('/')+1));
+				String storeAliveOnZk = childPath + "/alive";
+				logger.info("watchNode on: {} ", storeAliveOnZk);
 				zkHelper.watchNode(childPath + "/alive", new AliveWatchCbk(id) );
 
 			}
