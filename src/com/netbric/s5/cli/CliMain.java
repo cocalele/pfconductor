@@ -127,6 +127,21 @@ public class CliMain
 						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
 				});
 
+			sp = sps.addParser("check_volume_exists");
+			sp.description("Check if volume exists")
+				.addArgument("-v").help("Volume name to check").required(true).metavar("volume_name");
+			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
+				String volumeName = cmd.getString("v");
+
+				RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "check_volume_exists", RestfulReply.class, "volume_name", volumeName);
+				logger.info("Check volume exists response: {}", r);
+				if(r.retCode == RetCode.OK)
+					logger.info("Volume exists:{}", volumeName);
+
+				else
+					throw new IOException(String.format("Volume does not exist:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
+			});
+
 			sp=sps.addParser("list_volume");
 			sp.setDefault("__func", new CmdRunner() {
 				@Override
