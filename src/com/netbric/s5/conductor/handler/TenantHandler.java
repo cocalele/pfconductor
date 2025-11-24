@@ -55,9 +55,9 @@ public class TenantHandler
 		{
 			e.printStackTrace();
 		}
-		Long vols = S5Database.getInstance()
-                .sql("select count(*) from t_volume as v,t_tenant as t where v.tenant_id=t.id and t.name=?", name)
-                .first(Long.class);
+		Integer vols = S5Database.getInstance()
+				.sql("select count(*) from t_volume as v,t_tenant as t where v.tenant_idx=t.idx and t.name=?", name)
+				.first(Integer.class);
 		if (vols > 0)
 		{
 			return new RestfulReply(op, RetCode.INVALID_STATE,

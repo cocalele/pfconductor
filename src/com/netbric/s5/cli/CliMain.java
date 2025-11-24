@@ -88,22 +88,25 @@ public class CliMain
 			Subparser sp = sps.addParser("get_leader_conductor");
 			sp.description("Get leader pfconductor IP");
 
-<<<<<<< HEAD
-			sp = sps.addParser("delete_tenant");
-			sp.description("Delete tenant");
-=======
 			sp = sps.addParser("create_tenant");
 			sp.description("Create tenant");
->>>>>>> upstream/master
 			sp.addArgument("-t").help("Tenant name to create").required(true).metavar("tenant_name");
 			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
 					String tenantName = cmd.getString("t");
 
-<<<<<<< HEAD
-					RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_tenant", RestfulReply.class, "tenant_name", tenantName);
-=======
 					RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "create_tenant", RestfulReply.class, "tenant_name", tenantName);
->>>>>>> upstream/master
+					if(r.retCode == RetCode.OK)
+						logger.info("Succeed delete volume:{}", tenantName);
+					else
+						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", tenantName, r.retCode, r.reason));
+				});
+			sp = sps.addParser("delete_tenant");
+			sp.description("Delete tenant");
+			sp.addArgument("-t").help("Tenant name to create").required(true).metavar("tenant_name");
+			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
+					String tenantName = cmd.getString("t");
+
+					RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_tenant", RestfulReply.class, "tenant_name", tenantName);
 					if(r.retCode == RetCode.OK)
 						logger.info("Succeed delete volume:{}", tenantName);
 					else
