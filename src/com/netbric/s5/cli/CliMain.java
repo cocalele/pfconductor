@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import com.netbric.s5.conductor.handler.VolumeHandler.*;
+import com.netbric.s5.conductor.handler.TenantHandler.*;
+import com.netbric.s5.conductor.handler.StoreHandler.*;
 
 public class CliMain
 {
@@ -87,6 +89,19 @@ public class CliMain
 			Subparser sp = sps.addParser("get_leader_conductor");
 			sp.description("Get leader pfconductor IP");
 
+			sp = sps.addParser("create_tenant");
+			sp.description("Create tenant");
+			sp.addArgument("-t").help("Tenant name to create").required(true).metavar("tenant_name");
+			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
+					String tenantName = cmd.getString("t");
+
+					RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "create_tenant", RestfulReply.class, "tenant_name", tenantName);
+					if(r.retCode == RetCode.OK)
+						logger.info("Succeed delete volume:{}", tenantName);
+					else
+						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", tenantName, r.retCode, r.reason));
+				});
+
 			sp = sps.addParser("create_volume");
 			sp.description("Create volume");
 			sp.addArgument("-v").help("Volume name to create").required(true).metavar("volume_name");
@@ -113,6 +128,21 @@ public class CliMain
 						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
 				});
 
+			sp = sps.addParser("check_volume_exists");
+			sp.description("Check if volume exists")
+				.addArgument("-v").help("Volume name to check").required(true).metavar("volume_name");
+			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
+				String volumeName = cmd.getString("v");
+
+				RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "check_volume_exists", RestfulReply.class, "volume_name", volumeName);
+				logger.info("Check volume exists response: {}", r);
+				if(r.retCode == RetCode.OK)
+					logger.info("Volume exists:{}", volumeName);
+
+				else
+					throw new IOException(String.format("Volume does not exist:%s , code:%d, reason:%s", volumeName, r.retCode, r.reason));
+			});
+
 			sp=sps.addParser("list_volume");
 			sp.setDefault("__func", new CmdRunner() {
 				@Override
@@ -126,6 +156,25 @@ public class CliMain
 				@Override
 				public void run(Namespace cmd, Config cfg) throws Exception {
 					cmd_list_store(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("list_tenant");
+			sp.description("List tenant info");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_tenant(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("list_port");
+			sp.description("List port info");
+			sp.addArgument("-i").help("Node Id name to check the port").required(true).metavar("node_id");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_list_port(cmd, cfg);
 				}
 			});
 
@@ -225,7 +274,7 @@ public class CliMain
 			System.exit(1);
 		}
 
-    }
+	}
 
 	private static void cmd_create_volume(Namespace cmd, Config cfg) throws Exception {
 		String volumeName = cmd.getString("v");
@@ -411,6 +460,49 @@ public class CliMain
 		}
 		ASCIITable.getInstance().printTable(header, data);
 
+	}
+	static void cmd_list_tenant(Namespace cmd, Config cfg) throws Exception {
+		ListTenantReply r = SimpleHttpRpc.invokeConductor(cfg, "list_tenant", ListTenantReply.class);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed list_tenant");
+		else
+			throw new IOException(String.format("Failed to list_volume , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Id", "Car Id", "Name", "Password"};
+
+		String[][] data = new String[r.tenants.size()][];
+		for(int i=0;i<r.tenants.size();i++) {
+			data[i] = new String[]{
+				Long.toString(r.tenants.get(i).id),
+				Long.toString(r.tenants.get(i).car_id),
+				r.tenants.get(i).name,
+				r.tenants.get(i).pass_wd,
+			};
+		}
+		ASCIITable.getInstance().printTable(header, data);
+
+	}
+	static void cmd_list_port(Namespace cmd, Config cfg) throws Exception {
+		String id = cmd.getString("i");
+		System.out.println("id:" + id);
+		ListNodePortReply r = SimpleHttpRpc.invokeConductor(cfg, "list_port", ListNodePortReply.class,
+						"id", id);
+		if(r.retCode == RetCode.OK)
+		logger.info("Succeed list_port");
+		else
+			throw new IOException(String.format("Failed to list_port , code:%d, reason:%s", r.retCode, r.reason));
+		String [] header = { "Name", "IP Address", "Store Id", "Purpose"}; // "Status",
+
+		String[][] data = new String[r.ports.length][];
+		for (int i = 0; i < r.ports.length; i++) {
+			data[i] = new String[]{
+				r.ports[i].name,
+				r.ports[i].ip_addr,
+				Long.toString(r.ports[i].store_id),
+				Long.toString(r.ports[i].purpose),
+				// r.ports[i].status
+			};
+		}
+		ASCIITable.getInstance().printTable(header, data);
 	}
 	static void cmd_list_disk(Namespace cmd, Config cfg) throws Exception {
 		ListDiskReply r = SimpleHttpRpc.invokeConductor(cfg, "list_disk",  ListDiskReply.class);
