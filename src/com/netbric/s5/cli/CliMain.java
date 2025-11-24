@@ -88,7 +88,7 @@ public class CliMain
 			Subparser sp = sps.addParser("get_leader_conductor");
 			sp.description("Get leader pfconductor IP");
 
-			sp = sps.addParser("handle_error");
+			sp = sps.addParser("debug_handle_error");
 			sp.description("Handle error case when some replicas are in error state");
 			sp.addArgument("-i").help("Replica id").required(true).type(Integer.class).metavar("rep_id");
 			sp.addArgument("-sc").help("State code, 0xC0 - 0xCA, e.g.: 0xC0 means MSG_STATUS_NOT_PRIMARY").required(true).metavar("sc");
