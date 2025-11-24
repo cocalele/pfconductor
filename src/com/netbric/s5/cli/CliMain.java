@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.UUID;
 
+import com.netbric.s5.conductor.handler.VolumeHandler.*;
 import com.netbric.s5.conductor.handler.TenantHandler.*;
 import com.netbric.s5.conductor.handler.StoreHandler.*;
 
@@ -182,6 +183,16 @@ public class CliMain
 				@Override
 				public void run(Namespace cmd, Config cfg) throws Exception {
 					cmd_list_disk(cmd, cfg);
+				}
+			});
+
+			sp=sps.addParser("open_volume");
+			sp.description("Open/prepare volume");
+			sp.addArgument("-v").help("Volume name to open").required(true).metavar("volume_name");
+			sp.setDefault("__func", new CmdRunner() {
+				@Override
+				public void run(Namespace cmd, Config cfg) throws Exception {
+					cmd_open_volume(cmd, cfg);
 				}
 			});
 
@@ -356,6 +367,62 @@ public class CliMain
 
 		};
 		ASCIITable.getInstance().printTable(header, data);
+	}
+
+	private static void cmd_open_volume(Namespace cmd, Config cfg) throws Exception {
+		String volumeName = cmd.getString("v");
+		OpenVolumeReply r = SimpleHttpRpc.invokeConductor(cfg, "open_volume", OpenVolumeReply.class, "volume_name", volumeName);
+		if(r.retCode == RetCode.OK)
+			logger.info("Succeed open_volume");
+		else
+			throw new IOException(String.format("Failed to open_volume , code:%d, reason:%s", r.retCode, r.reason));
+		String[] shardHeader = {
+			"Shard Index",    // 分片索引
+			"Status",         // 状态
+			"Store IPs",      // 存储节点IP
+			"Is Shared Disk", // 是否共享磁盘
+			"Disk UUID",      // 磁盘UUID（共享磁盘时有效）
+			"Device Name"     // 设备名称（共享磁盘时有效）
+		};
+
+	    System.out.printf("cmd_open_volume here. \n");
+		if (r.shards == null || r.shards.length == 0) {
+			System.out.println("No shard data available.");
+		} else {
+			// 构建表格数据
+			String[][] shardData = new String[r.shards.length][];
+			for (int i = 0; i < r.shards.length; i++) {
+				ShardInfoForClient shard = r.shards[i];
+				shardData[i] = new String[]{
+					String.valueOf(shard.index),                  // 分片索引
+					shard.status,                                 // 状态
+					shard.store_ips != null ? shard.store_ips : "", // 存储IP（为空时显示空字符串）
+					shard.is_shareddisk == 1 ? "Yes" : "No",      // 是否共享磁盘（转换为Yes/No）
+					shard.disk_uuid != null ? shard.disk_uuid : "", // 磁盘UUID
+					shard.dev_name != null ? shard.dev_name : ""   // 设备名称
+				};
+			}
+			// 打印分片信息表格
+			System.out.println("\n=== Shard Information Table ===");
+			ASCIITable.getInstance().printTable(shardHeader, shardData);
+		}
+
+		String[] volumeHeader = {
+			"Volume ID", "Volume Name", "Size (Bytes)", "Replica Count", "Status", "Meta Version", "Snapshot Seq"
+		};
+		String[][] volumeData = {
+			{
+				String.valueOf(r.volume_id),
+				r.volume_name,
+				String.valueOf(r.volume_size),
+				String.valueOf(r.rep_count),
+				r.status,
+				String.valueOf(r.meta_ver),
+				String.valueOf(r.snap_seq)
+			}
+		};
+		System.out.println("\n=== Volume Basic Information ===");
+		ASCIITable.getInstance().printTable(volumeHeader, volumeData);
 	}
 
 	static void cmd_list_volume(Namespace cmd, Config cfg) throws Exception {
