@@ -100,6 +100,18 @@ public class CliMain
 					else
 						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", tenantName, r.retCode, r.reason));
 				});
+			sp = sps.addParser("delete_tenant");
+			sp.description("Delete tenant");
+			sp.addArgument("-t").help("Tenant name to create").required(true).metavar("tenant_name");
+			sp.setDefault("__func", (CmdRunner) (cmd, cfg) ->{
+					String tenantName = cmd.getString("t");
+
+					RestfulReply r = SimpleHttpRpc.invokeConductor(cfg, "delete_tenant", RestfulReply.class, "tenant_name", tenantName);
+					if(r.retCode == RetCode.OK)
+						logger.info("Succeed delete volume:{}", tenantName);
+					else
+						throw new IOException(String.format("Failed to delete volume:%s , code:%d, reason:%s", tenantName, r.retCode, r.reason));
+				});
 
 			sp = sps.addParser("create_volume");
 			sp.description("Create volume");
